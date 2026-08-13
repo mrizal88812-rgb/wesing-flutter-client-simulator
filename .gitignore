@@ -1,4 +1,5 @@
 ```
+.gitignore
 # Flutter/Dart
 .dart_tool/
 .build/
