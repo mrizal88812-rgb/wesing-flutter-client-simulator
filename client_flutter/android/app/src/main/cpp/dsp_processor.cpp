@@ -81,7 +81,22 @@ void DspProcessor::seek(float positionSeconds) {
     frame = instrumentalBuffer.size();
   }
 
+  bool wasPlaying = isPlaying.load(std::memory_order_relaxed);
+  bool isCurrentlyRecording = isRecording.load(std::memory_order_relaxed);
+  
   playbackFrame.store(frame, std::memory_order_release);
+
+  // CRITICAL FIX FOR KARAOKE VOCAL SYNC:
+  // When seeking during recording, we must adjust recordingStartFrame so that
+  // the already-recorded vocal samples remain synchronized with the new playback position.
+  // Without this, the vocal would play from the wrong position after seek, causing drift.
+  if (isCurrentlyRecording && wasPlaying) {
+    // recordingStartFrame should match the new playbackFrame to maintain sync
+    // The vocal recorded so far starts at frame 0 of vocalRecording, and should
+    // align with the new playback position.
+    recordingStartFrame = frame;
+    LOGD("[AUDIO] seek() during recording: adjusted recordingStartFrame=%zu", recordingStartFrame);
+  }
 
   LOGD("[AUDIO] seek() position=%.3f s frame=%zu",
        static_cast<float>(frame) / sampleRate, frame);
