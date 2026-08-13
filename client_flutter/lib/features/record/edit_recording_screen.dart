@@ -181,11 +181,11 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
       final double endSec = widget.songEnd > widget.songStart ? widget.songEnd : (_duration.inMilliseconds / 1000.0);
 
       if (posSec >= endSec) {
-        _audioEngine.pause();
+        // Loop back to start
         _audioEngine.seek(Duration(milliseconds: (widget.songStart * 1000).round()));
-        _vinylAnimationController.stop();
+        _vinylAnimationController.repeat();
         setState(() {
-          isPlaying = false;
+          isPlaying = true;
           _currentTime = Duration.zero;
         });
         return;
