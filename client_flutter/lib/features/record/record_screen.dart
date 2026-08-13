@@ -725,8 +725,9 @@ debugPrint(
                             final targetLyric = widget.song.lyrics[centeredIndex];
                             final targetTimeSec = targetLyric.time;
                             if (targetTimeSec >= 0) {
-                              // CRITICAL: Pause before seek to prevent double playback
-                              // The pause already happened in ScrollStartNotification, but ensure it's still paused
+                              // CRITICAL: Ensure we're paused before seek to prevent double playback
+                              // The pause already happened in ScrollStartNotification
+                              bool wasAlreadyPaused = !isPlayingNotifier.value;
                               if (isPlayingNotifier.value) {
                                 _audioEngine.pause();
                                 _vinylAnimationController.stop();
@@ -738,9 +739,15 @@ debugPrint(
                               currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
                               
                               // Resume playback if it was playing before scroll
+                              // Use a shorter delay and check state to prevent race conditions
                               if (_wasPlayingBeforeScroll) {
-                                Future.delayed(const Duration(milliseconds: 50), () {
-                                  if (mounted && _audioEngine.isPlaying() == false) {
+                                // Reset the flag first to prevent multiple resumes
+                                _wasPlayingBeforeScroll = false;
+                                
+                                // Small delay to ensure C++ seek is fully committed
+                                // but not too long to cause noticeable gap
+                                Future.delayed(const Duration(milliseconds: 20), () {
+                                  if (mounted && !_audioEngine.isPlaying()) {
                                     _audioEngine.play();
                                     _vinylAnimationController.repeat();
                                     isPlayingNotifier.value = true;
