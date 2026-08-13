@@ -306,5 +306,5 @@ Java_com_okamiaaww_app_KaraokeDspEngine_getRecordingEndPosition(JNIEnv *env,
                                                                 jobject /* this */) {
   if (!g_processor) return 0.0f;
   size_t endFrame = g_processor->getRecordingEndFrame();
-  return static_cast<float>(endFrame) / g_processor->sampleRate;
+  return static_cast<float>(endFrame) / g_processor->getSampleRate();  // Use getter instead of direct access
 }

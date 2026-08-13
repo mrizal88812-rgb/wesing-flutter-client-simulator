@@ -95,6 +95,7 @@ public:
   size_t getVocalSegmentsCount() const { return vocalSegments.size(); }
   const std::vector<VocalSegment>& getVocalSegments() const { return vocalSegments; }
   size_t getRecordingEndFrame() const { return recordingEndFrame; }
+  int getSampleRate() const { return sampleRate; }  // NEW: Public getter for sampleRate
 
 private:
   int sampleRate;
