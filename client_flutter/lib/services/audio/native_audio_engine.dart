@@ -535,6 +535,7 @@ Future<void> startRecording() async {
     required double instrumentalVolume,
     required KaraokeEffectsSettings settings,
     required Function(double progress) onProgress,
+    List<VocalSegmentData>? vocalSegments,
   }) async {
     bool isExporting = true;
     
@@ -550,10 +551,21 @@ Future<void> startRecording() async {
     });
 
     try {
+      // Prepare vocal segments data for native side
+      List<Map<String, dynamic>>? segmentsData;
+      if (vocalSegments != null && vocalSegments.isNotEmpty) {
+        segmentsData = vocalSegments.map((seg) => {
+          'songStartTimeSec': seg.songStartTimeSec,
+          'songEndTimeSec': seg.songEndTimeSec,
+          'durationSec': seg.durationSec,
+        }).toList();
+      }
+      
       final String? result = await _channel.invokeMethod<String>('exportMix', {
         'vocalVolume': vocalVolume,
         'instrumentalVolume': instrumentalVolume,
-        'outPath': '/sdcard/Download/karaoke_export_${DateTime.now().millisecondsSinceEpoch}.wav'
+        'outPath': '/sdcard/Download/karaoke_export_${DateTime.now().millisecondsSinceEpoch}.wav',
+        'vocalSegments': segmentsData,
       });
       isExporting = false;
       onProgress(1.0);

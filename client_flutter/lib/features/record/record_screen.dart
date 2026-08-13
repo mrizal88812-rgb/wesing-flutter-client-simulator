@@ -18,6 +18,7 @@ import '../../main.dart';
 import 'components/pitch_guide_renderer.dart';
 import 'components/pitch_overlay_renderer.dart';
 import 'edit_recording_screen.dart';
+import '../../services/audio/karaoke_audio_engine.dart' show VocalSegmentData;
 
 /// Metadata for a single vocal segment in multi-segment karaoke recording.
 /// Stores the absolute timeline position where user sang, not relative recording time.
@@ -36,6 +37,8 @@ class _VocalSegmentMetadata {
 }
 
 /// Public version of vocal segment metadata passed to EditRecordingScreen.
+/// Deprecated: Use VocalSegmentData from karoke_audio_engine.dart instead.
+@Deprecated('Use VocalSegmentData from karaoke_audio_engine.dart')
 class VocalSegmentData {
   final double songStartTimeSec;
   final double songEndTimeSec;
@@ -119,6 +122,9 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   final List<_VocalSegmentMetadata> _vocalSegments = [];
   double? _currentSegmentStart; // Absolute timeline position when current singing started
   bool _wasSingingBeforeSeek = false; // Track if user was singing before seeking
+  
+  // Legacy variable for backward compatibility (deprecated, use _vocalSegments instead)
+  double _recordingSongStart = 0.0;
 
   // Karaoke engine UI & state parameters
   bool _isEarphoneConnected = true;

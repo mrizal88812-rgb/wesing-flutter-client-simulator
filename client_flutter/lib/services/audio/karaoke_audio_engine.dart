@@ -3,6 +3,20 @@ import 'stub_audio_engine.dart'
     if (dart.library.html) 'web_audio_engine.dart'
     if (dart.library.io) 'native_audio_engine.dart';
 
+/// Metadata for a vocal segment in multi-segment karaoke recording.
+/// Stores the absolute timeline position where user sang.
+class VocalSegmentData {
+  final double songStartTimeSec;
+  final double songEndTimeSec;
+  final double durationSec;
+
+  const VocalSegmentData({
+    required this.songStartTimeSec,
+    required this.songEndTimeSec,
+    required this.durationSec,
+  });
+}
+
 /// Predefined vocal effects presets for professional karaoke styling.
 enum KaraokePreset {
   adjust,
@@ -129,6 +143,7 @@ abstract class KaraokeAudioEngine {
     required double instrumentalVolume,
     required KaraokeEffectsSettings settings,
     required Function(double progress) onProgress,
+    List<VocalSegmentData>? vocalSegments,
   });
 
   /// Reset all audio effect parameter sliders to default values.

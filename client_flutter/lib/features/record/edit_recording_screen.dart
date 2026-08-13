@@ -9,7 +9,7 @@ import '../../services/audio/karaoke_audio_engine.dart';
 import '../../data/repositories_impl.dart';
 import '../../data/models/audio_preset.dart';
 import '../../main.dart';
-import 'record_screen.dart' show VocalSegmentData;
+import 'record_screen.dart';
 
 class RecordingTemplate {
   final String id;
