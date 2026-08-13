@@ -1,44 +1,30 @@
 ```
-# Flutter/Dart specific ignores
+# Flutter/Dart
 .dart_tool/
 .build/
+flutter/
 packages/
-*.iws
-*.lock
-*.tmp
-*.temp
-*.log
-*~
+*.g.dart
+*.freezed.dart
 
-# iOS
-ios/Pods/
-ios/build/
-ios/.symlinks/
-Podfile.lock
-
-# Android
-android/.gradle/
-android/build/
-android/app/build/
-
-# Web
-build/web/
-
-# LSP
-.dart_tool/
-.dart_tool/package_config.json
-
-# IDE specific
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+
+# Logs
+*.log
+*.tmp
 
 # Environment
 .env
 .env.local
 *.env.*
 
+# Dependencies
+node_modules/
+```
 # Logs
 *.log
 

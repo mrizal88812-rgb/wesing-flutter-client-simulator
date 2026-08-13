@@ -9,7 +9,7 @@ import '../../services/audio/karaoke_audio_engine.dart';
 import '../../data/repositories_impl.dart';
 import '../../data/models/audio_preset.dart';
 import '../../main.dart';
-import 'record_screen.dart';
+import 'record_screen.dart' show VocalSegmentData;
 
 class RecordingTemplate {
   final String id;
@@ -78,6 +78,7 @@ class EditRecordingScreen extends StatefulWidget {
   final double songStart;
   final double songEnd;
   final double fullSongDurationSec; // Full song duration for proper timeline
+  final List<VocalSegmentData>? vocalSegments; // Multi-segment vocal metadata for timeline sync
 
   const EditRecordingScreen({
     Key? key,
@@ -88,6 +89,7 @@ class EditRecordingScreen extends StatefulWidget {
     this.songStart = 0.0,
     this.songEnd = 0.0,
     this.fullSongDurationSec = 0.0,
+    this.vocalSegments,
   }) : super(key: key);
 
   @override
@@ -176,6 +178,14 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
     
     // Use full song duration for slider/timeline display
     _duration = Duration(milliseconds: (fullSongDuration * 1000).round());
+    
+    // Log vocal segments for debugging
+    if (widget.vocalSegments != null && widget.vocalSegments!.isNotEmpty) {
+      print('[EDIT] Received ${widget.vocalSegments!.length} vocal segments:');
+      for (var seg in widget.vocalSegments!) {
+        print('  Segment: ${seg.songStartTimeSec}s → ${seg.songEndTimeSec}s (${seg.durationSec}s)');
+      }
+    }
     
     // Start from songStart position (where first vocal segment begins)
     final double startMs = widget.songStart * 1000.0;
@@ -462,10 +472,20 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
 
     String exportedFilePath;
     try {
+      // Pass vocal segments metadata to C++ export engine for proper multi-segment mixing
+      final List<Map<String, double>>? segmentsData = widget.vocalSegments?.map((s) => {
+        'songStart': s.songStartTimeSec,
+        'songEnd': s.songEndTimeSec,
+        'duration': s.durationSec,
+      }).toList();
+      
+      print('[EXPORT] Exporting mix with ${segmentsData?.length ?? 0} vocal segments');
+      
       exportedFilePath = await _audioEngine.exportMix(
         vocalVolume: _vocalVolume,
         instrumentalVolume: _musicVolume,
         settings: settings,
+        vocalSegments: segmentsData,
         onProgress: (p) {
           if (!isExportCancelled) {
             renderProgress = p;
