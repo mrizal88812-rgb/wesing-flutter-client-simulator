@@ -5,7 +5,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/config/app_config.dart';
 import '../../data/models/song.dart';
 import '../../data/models/pitch_data.dart';
@@ -1423,11 +1422,12 @@ class _LyricRow extends StatelessWidget {
             ? responsiveFontSize(context, 28.0)
             : (isPast ? responsiveFontSize(context, 21.0) : responsiveFontSize(context, 23.0));
 
-        final TextStyle baseStyle = GoogleFonts.poppins(
+        final TextStyle baseStyle = TextStyle(
           fontSize: textSize,
           fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
           letterSpacing: 0.2,
           color: isActive ? Colors.white70 : (isPast ? Colors.white24 : Colors.white60),
+          fontFamily: 'Poppins',
         );
 
         return GestureDetector(
