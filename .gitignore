@@ -1,32 +1,32 @@
 ```
-# Flutter/Dart build artifacts
-**/build/
-**/ios/Flutter/.last_build_id
+# Dependencies
 .dart_tool/
-.packages
-.pub-cache/
-.pub/
-flutter_export_environment.sh
-generated_plugin_registrant.*
+.build/
 
-# IDE files
-.vscode/
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
 .idea/
+.vscode/
 *.iml
 *.ipr
 *.iws
-*.swp
-*.swo
 
 # OS generated files
 .DS_Store
 Thumbs.db
-ehthumbs.db
-Icon?
-desktop.ini
 
-# Log files
-*.log
+# Coverage reports
+coverage/
+*.coverage
 
 # Environment variables
 .env
