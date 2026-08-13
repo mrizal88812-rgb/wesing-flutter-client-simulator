@@ -916,40 +916,13 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                 _audioEngine.seek(Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt()));
                                 currentTimeNotifier.value = Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt());
                                 
-                                // CRITICAL: If user was singing before scroll, finalize the segment ONCE
-                                // User must explicitly press record button to start new segment at new position
-                                if (_wasSingingBeforeSeek && isRecordingNotifier.value && _currentSegmentStart != null && !_isFinalizingSegment) {
-                                  _wasSingingBeforeSeek = false;
-                                  _isFinalizingSegment = true;
-                                  
-                                  // CRITICAL FIX: Calculate segment end time based on CURRENT playback position BEFORE seek
-                                  // The user was singing until they started scrolling, so use the current time
-                                  // DO NOT use adjustedTargetTimeSec as that's 3 seconds BEFORE the target lyric
-                                  // We need the ACTUAL time when user stopped singing (which is approximately now)
-                                  final double currentTimeSec = currentTimeNotifier.value.inMilliseconds / 1000.0;
-                                  final double segmentEndTimeSec = currentTimeSec;
-                                  
-                                  if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
-                                    _vocalSegments.add(_VocalSegmentMetadata(
-                                      songStartTimeSec: _currentSegmentStart!,
-                                      songEndTimeSec: segmentEndTimeSec,
-                                      recordedDuration: Duration(milliseconds: ((segmentEndTimeSec - _currentSegmentStart!) * 1000).round()),
-                                    ));
-                                    print('[SCROLL END] Finalized vocal segment: ${_currentSegmentStart}s → $segmentEndTimeSec (${_vocalSegments.length} total segments)');
-                                  } else {
-                                    print('[SCROLL END] Segment too short (${segmentEndTimeSec - _currentSegmentStart!}s), skipping');
-                                  }
-                                  
-                                  // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
-                                  // The segment is finalized, so we must stop capturing audio
-                                  _audioEngine.stopRecording();
-                                  isRecordingNotifier.value = false;
-                                  _currentSegmentStart = null;
-                                  _isFinalizingSegment = false;
-                                  print('[SCROLL END] Stopped recording and cleared _currentSegmentStart');
-                                  // Note: User must press record button to start new segment with countdown
-                                } else if (_wasSingingBeforeSeek) {
-                                  // Reset flag even if not recording anymore
+                                // CRITICAL FIX: Do NOT stop recording or finalize segment when user scrolls
+                                // User may want to continue singing across multiple lyrics
+                                // Only finalize segment when user explicitly presses END button
+                                // This prevents audio interruption and vocal duplication
+                                
+                                // Reset flag if user was singing (no action needed)
+                                if (_wasSingingBeforeSeek) {
                                   _wasSingingBeforeSeek = false;
                                 }
                                 
@@ -1024,35 +997,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                     // User wants to hear the instrument continue while finding their place
                                     final wasPlaying = isPlayingNotifier.value;
 
-                                    // CRITICAL: If user was singing before tap, finalize the segment
-                                    // Same logic as scroll - stop recording to prevent audio loop/duplication
-                                    if (isRecordingNotifier.value && _currentSegmentStart != null && !_isFinalizingSegment) {
-                                      _isFinalizingSegment = true;
-                                      // CRITICAL FIX: Calculate segment end time based on CURRENT playback position BEFORE seek
-                                      // The user was singing until they tapped, so use the current time
-                                      // DO NOT use adjustedTargetTimeSec as that's 3 seconds BEFORE the target lyric
-                                      // We need the ACTUAL time when user stopped singing (which is approximately now)
-                                      final double currentTimeSec = currentTimeNotifier.value.inMilliseconds / 1000.0;
-                                      final double segmentEndTimeSec = currentTimeSec;
-                                      
-                                      if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
-                                        _vocalSegments.add(_VocalSegmentMetadata(
-                                          songStartTimeSec: _currentSegmentStart!,
-                                          songEndTimeSec: segmentEndTimeSec,
-                                          recordedDuration: Duration(milliseconds: ((segmentEndTimeSec - _currentSegmentStart!) * 1000).round()),
-                                        ));
-                                        print('[TAP] Finalized vocal segment: ${_currentSegmentStart}s → $segmentEndTimeSec (${_vocalSegments.length} total segments)');
-                                      } else {
-                                        print('[TAP] Segment too short (${segmentEndTimeSec - _currentSegmentStart!}s), skipping');
-                                      }
-                                      
-                                      // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
-                                      _audioEngine.stopRecording();
-                                      isRecordingNotifier.value = false;
-                                      _currentSegmentStart = null;
-                                      _isFinalizingSegment = false;
-                                      print('[TAP] Stopped recording and cleared _currentSegmentStart');
-                                    }
+                                    // CRITICAL FIX: Do NOT stop recording or finalize segment when user taps
+                                    // User may want to continue singing across multiple lyrics
+                                    // Only finalize segment when user explicitly presses END button
+                                    // This prevents audio interruption and vocal duplication
 
                                     // CRITICAL: Store target position for countdown system
                                     // Do NOT start recording immediately - let user prepare first
