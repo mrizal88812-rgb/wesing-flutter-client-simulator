@@ -703,6 +703,15 @@ debugPrint(
                         if (notification is ScrollStartNotification) {
                           _isUserScrollingLyrics = true;
                           _lyricsScrollDebounce?.cancel();
+                          // Pause playback immediately when scroll starts to prevent audio overlap
+                          if (isPlayingNotifier.value && !_isCountingDown) {
+                            _wasPlayingBeforeScroll = true;
+                            _audioEngine.pause();
+                            _vinylAnimationController.stop();
+                            isPlayingNotifier.value = false;
+                          } else {
+                            _wasPlayingBeforeScroll = false;
+                          }
                         } else if (notification is ScrollEndNotification) {
                           _lyricsScrollDebounce?.cancel();
                           double offset = notification.metrics.pixels;
@@ -716,8 +725,28 @@ debugPrint(
                             final targetLyric = widget.song.lyrics[centeredIndex];
                             final targetTimeSec = targetLyric.time;
                             if (targetTimeSec >= 0) {
+                              // CRITICAL: Pause before seek to prevent double playback
+                              // The pause already happened in ScrollStartNotification, but ensure it's still paused
+                              if (isPlayingNotifier.value) {
+                                _audioEngine.pause();
+                                _vinylAnimationController.stop();
+                                isPlayingNotifier.value = false;
+                              }
+                              
+                              // Perform seek while paused - this prevents buffer overlap
                               _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
                               currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
+                              
+                              // Resume playback if it was playing before scroll
+                              if (_wasPlayingBeforeScroll) {
+                                Future.delayed(const Duration(milliseconds: 50), () {
+                                  if (mounted && _audioEngine.isPlaying() == false) {
+                                    _audioEngine.play();
+                                    _vinylAnimationController.repeat();
+                                    isPlayingNotifier.value = true;
+                                  }
+                                });
+                              }
                             }
                           }
 
