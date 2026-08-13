@@ -1,10 +1,14 @@
 ```
-# Flutter/Dart specific
+# Flutter/Dart specific ignores
 .dart_tool/
 .build/
-ios/.symlinks/
-flutter/ephemeral/
-packages/flutter_tools/.pub-cache/
+*.g.dart
+*.freezed.dart
+*.gen.dart
+
+# Dependencies
+.pub/
+pubspec.lock
 
 # IDE files
 .idea/
@@ -12,7 +16,7 @@ packages/flutter_tools/.pub-cache/
 *.swp
 *.swo
 
-# Logs
+# Logs and temp files
 *.log
 *.tmp
 
@@ -20,19 +24,6 @@ packages/flutter_tools/.pub-cache/
 .env
 .env.local
 *.env.*
-
-# Dependencies
-node_modules/
-**/node_modules/
-.pub-cache/
-.pub/
-.packages
-
-# Build outputs
-build/
-dist/
-target/
-out/
 
 # OS generated files
 .DS_Store
