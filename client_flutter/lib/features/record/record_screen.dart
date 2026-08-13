@@ -838,7 +838,13 @@ debugPrint(
                             final targetLyric = widget.song.lyrics[centeredIndex];
                             final targetTimeSec = targetLyric.time;
                             
-                            if (targetTimeSec >= 0) {
+                            // CRITICAL: Apply offset when scrolling to lyrics
+                            // When user scrolls to a lyric at time T, seek to T - 3 seconds
+                            // This gives user preparation time before the lyric starts
+                            final double prepTimeSec = 3.0; // Preparation time in seconds
+                            final adjustedTargetTimeSec = (targetTimeSec - prepTimeSec).clamp(0.0, targetTimeSec);
+                            
+                            if (adjustedTargetTimeSec >= 0) {
                               // DEBOUNCE SEEK: Only seek after a short delay to ensure scroll has fully stopped
                               // This prevents multiple rapid seeks during scroll settling
                               _seekDebounce = Timer(const Duration(milliseconds: 100), () {
@@ -852,12 +858,14 @@ debugPrint(
                                 
                                 // CRITICAL: Store target position for countdown system when scrolling
                                 // User must press record button to start countdown and recording
+                                // Store the ORIGINAL target time (not adjusted) so countdown leads to correct lyric
                                 _targetTimelinePosition = targetTimeSec;
-                                print('[SCROLL] User scrolled to ${targetTimeSec}s, stored as target for countdown');
+                                print('[SCROLL] User scrolled to lyric at ${targetTimeSec}s, seeking to ${adjustedTargetTimeSec}s (${prepTimeSec}s prep time)');
 
                                 // Perform seek while paused - this prevents buffer overlap
-                                _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
-                                currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
+                                // Seek to adjusted position (3 seconds before the lyric)
+                                _audioEngine.seek(Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt()));
+                                currentTimeNotifier.value = Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt());
                                 
                                 // CRITICAL: If user was singing before scroll, finalize the segment
                                 // User must explicitly press record button to start new segment at new position
@@ -935,7 +943,14 @@ debugPrint(
                                   _lyricsScrollDebounce?.cancel();
                                   _lastScrolledLyricIndex = idx;
                                   double targetTimeSec = item.time;
-                                  if (targetTimeSec >= 0) {
+                                  
+                                  // CRITICAL: Apply offset when tapping lyrics (same as scroll)
+                                  // When user taps a lyric at time T, seek to T - 3 seconds
+                                  // This gives user preparation time before the lyric starts
+                                  final double prepTimeSec = 3.0; // Preparation time in seconds
+                                  final adjustedTargetTimeSec = (targetTimeSec - prepTimeSec).clamp(0.0, targetTimeSec);
+                                  
+                                  if (adjustedTargetTimeSec >= 0) {
                                     final wasPlaying = isPlayingNotifier.value;
                                     if (wasPlaying) {
                                       await _audioEngine.pause();
@@ -945,12 +960,13 @@ debugPrint(
 
                                     // CRITICAL: Store target position for countdown system
                                     // Do NOT start recording immediately - let user prepare first
+                                    // Store the ORIGINAL target time (not adjusted) so countdown leads to correct lyric
                                     _targetTimelinePosition = targetTimeSec;
-                                    print('[TAP] User tapped lyric at ${targetTimeSec}s, stored as target for countdown');
+                                    print('[TAP] User tapped lyric at ${targetTimeSec}s, seeking to ${adjustedTargetTimeSec}s (${prepTimeSec}s prep time)');
 
-                                    // Seek to the position immediately for preview
-                                    await _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
-                                    currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
+                                    // Seek to the adjusted position immediately for preview (3 seconds before the lyric)
+                                    await _audioEngine.seek(Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt()));
+                                    currentTimeNotifier.value = Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt());
                                     activeLyricIndexNotifier.value = idx;
 
                                     if (_scrollController.hasClients) {
