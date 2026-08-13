@@ -19,6 +19,35 @@ import 'components/pitch_guide_renderer.dart';
 import 'components/pitch_overlay_renderer.dart';
 import 'edit_recording_screen.dart';
 
+/// Metadata for a single vocal segment in multi-segment karaoke recording.
+/// Stores the absolute timeline position where user sang, not relative recording time.
+class _VocalSegmentMetadata {
+  final double songStartTimeSec;   // Absolute timeline position when singing started
+  final double songEndTimeSec;     // Absolute timeline position when singing stopped
+  final Duration recordedDuration; // How long user actually sang (for reference)
+
+  const _VocalSegmentMetadata({
+    required this.songStartTimeSec,
+    required this.songEndTimeSec,
+    required this.recordedDuration,
+  });
+
+  double get durationSec => songEndTimeSec - songStartTimeSec;
+}
+
+/// Public version of vocal segment metadata passed to EditRecordingScreen.
+class VocalSegmentData {
+  final double songStartTimeSec;
+  final double songEndTimeSec;
+  final double durationSec;
+
+  const VocalSegmentData({
+    required this.songStartTimeSec,
+    required this.songEndTimeSec,
+    required this.durationSec,
+  });
+}
+
 class RecordScreen extends StatefulWidget {
   final Song song;
   const RecordScreen({Key? key, required this.song}) : super(key: key);
@@ -85,8 +114,11 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   int _countdownValue = kGetReadyCountdownSeconds;
 
   Duration _recordedDuration = Duration.zero;
-  double _recordingSongStart = 0.0;
-  double _recordingSongEnd = 0.0;
+  // Multi-segment recording metadata for Karaoke Timeline Synchronization
+  // Each segment stores absolute timeline position where user sang
+  final List<_VocalSegmentMetadata> _vocalSegments = [];
+  double? _currentSegmentStart; // Absolute timeline position when current singing started
+  bool _wasSingingBeforeSeek = false; // Track if user was singing before seeking
 
   // Karaoke engine UI & state parameters
   bool _isEarphoneConnected = true;
@@ -422,7 +454,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
 
       await _audioEngine.play();
       await _audioEngine.startRecording();
-      _recordingSongStart = currentTimeNotifier.value.inMilliseconds / 1000.0;
+      // CRITICAL: Store absolute timeline position when recording starts
+      // This ensures vocal segment is placed at correct position in master timeline
+      _currentSegmentStart = currentTimeNotifier.value.inMilliseconds / 1000.0;
+      print('[RECORD] Started recording at absolute timeline position: ${_currentSegmentStart}s');
       isPlayingNotifier.value = true;
       isRecordingNotifier.value = true;
       _vinylAnimationController.repeat();
@@ -549,13 +584,29 @@ debugPrint(
 
   Future<void> _transitionToMixingState() async {
     _uiTimer?.cancel();
-    _recordingSongEnd = currentTimeNotifier.value.inMilliseconds / 1000.0;
     
-    final double actualTakeDurationSec = (_recordingSongEnd > _recordingSongStart)
-        ? (_recordingSongEnd - _recordingSongStart)
-        : (currentTimeNotifier.value.inMilliseconds / 1000.0);
-
-    _recordedDuration = Duration(milliseconds: (actualTakeDurationSec * 1000).round());
+    // CRITICAL: Finalize the last vocal segment when ending recording
+    final double currentTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
+    if (isRecordingNotifier.value && _currentSegmentStart != null) {
+      if (currentTimelinePos - _currentSegmentStart! > 0.5) {
+        _vocalSegments.add(_VocalSegmentMetadata(
+          songStartTimeSec: _currentSegmentStart!,
+          songEndTimeSec: currentTimelinePos,
+          recordedDuration: Duration(milliseconds: ((currentTimelinePos - _currentSegmentStart!) * 1000).round()),
+        ));
+        print('[END] Finalized last vocal segment: ${_currentSegmentStart}s → $currentTimelinePos (${_vocalSegments.length} total segments)');
+      }
+    }
+    
+    // Calculate overall recording range (from first segment start to last segment end)
+    double songStart = 0.0;
+    double songEnd = currentTimelinePos;
+    if (_vocalSegments.isNotEmpty) {
+      songStart = _vocalSegments.first.songStartTimeSec;
+      songEnd = _vocalSegments.last.songEndTimeSec;
+    }
+    
+    _recordedDuration = Duration(milliseconds: ((songEnd - songStart) * 1000).round());
 
     await _audioEngine.stopRecording();
     _vinylAnimationController.stop();
@@ -563,6 +614,7 @@ debugPrint(
     _isNavigatingToMix = true;
     if (!mounted) return;
     
+    // Pass vocal segment metadata to edit screen for proper multi-segment playback
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -571,9 +623,14 @@ debugPrint(
           audioEngine: _audioEngine,
           recordedDuration: _recordedDuration,
           score: scoreNotifier.value,
-          songStart: _recordingSongStart,
-          songEnd: _recordingSongEnd,
+          songStart: songStart,
+          songEnd: songEnd,
           fullSongDurationSec: _audioEngine.getDuration().inMilliseconds / 1000.0,
+          vocalSegments: _vocalSegments.map((s) => VocalSegmentData(
+            songStartTimeSec: s.songStartTimeSec,
+            songEndTimeSec: s.songEndTimeSec,
+            durationSec: s.durationSec,
+          )).toList(),
         ),
       ),
     );
@@ -708,6 +765,23 @@ debugPrint(
                           _isUserScrollingLyrics = true;
                           _lyricsScrollDebounce?.cancel();
                           _seekDebounce?.cancel();
+                          
+                          // CRITICAL: If user was singing and scrolls, finalize current vocal segment
+                          if (isRecordingNotifier.value && _currentSegmentStart != null) {
+                            final double currentTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
+                            // Only save segment if it has meaningful duration (> 0.5s)
+                            if (currentTimelinePos - _currentSegmentStart! > 0.5) {
+                              _vocalSegments.add(_VocalSegmentMetadata(
+                                songStartTimeSec: _currentSegmentStart!,
+                                songEndTimeSec: currentTimelinePos,
+                                recordedDuration: Duration(milliseconds: ((currentTimelinePos - _currentSegmentStart!) * 1000).round()),
+                              ));
+                              print('[SCROLL] Finalized vocal segment during scroll: ${_currentSegmentStart}s → $currentTimelinePos (${_vocalSegments.length} total segments)');
+                            }
+                            _wasSingingBeforeSeek = true;
+                            _currentSegmentStart = null; // Will be reset when singing resumes at new position
+                          }
+                          
                           // Pause playback immediately when scroll starts to prevent audio overlap
                           if (isPlayingNotifier.value && !_isCountingDown) {
                             _wasPlayingBeforeScroll = true;
@@ -746,6 +820,19 @@ debugPrint(
                                 // Perform seek while paused - this prevents buffer overlap
                                 _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
                                 currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
+                                
+                                // CRITICAL: If user was singing before scroll, resume recording at new position
+                                // This starts a new vocal segment at the new timeline position
+                                if (_wasSingingBeforeSeek) {
+                                  _wasSingingBeforeSeek = false;
+                                  Future.delayed(const Duration(milliseconds: 50), () {
+                                    if (mounted && isRecordingNotifier.value) {
+                                      // Set new segment start at current timeline position (after seek)
+                                      _currentSegmentStart = currentTimeNotifier.value.inMilliseconds / 1000.0;
+                                      print('[SCROLL] Started new vocal segment at: ${_currentSegmentStart}s');
+                                    }
+                                  });
+                                }
                                 
                                 // Resume playback if it was playing before scroll
                                 if (_wasPlayingBeforeScroll) {
