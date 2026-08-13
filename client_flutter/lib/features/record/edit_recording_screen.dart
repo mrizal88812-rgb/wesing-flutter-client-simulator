@@ -183,7 +183,7 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
     if (widget.vocalSegments != null && widget.vocalSegments!.isNotEmpty) {
       print('[EDIT] Received ${widget.vocalSegments!.length} vocal segments:');
       for (var seg in widget.vocalSegments!) {
-        print('  Segment: ${seg.songStartTimeSec}s → ${seg.songEndTimeSec}s (${seg.durationSec}s)');
+        print('  Segment: ${seg.songStartTimeSec}s → ${seg.songEndTimeSec}s (${seg.durationSec}s), recordingEnd=${seg.recordingEndPositionSec ?? "N/A"}s');
       }
     }
     

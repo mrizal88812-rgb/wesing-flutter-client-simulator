@@ -94,6 +94,7 @@ public:
   float getExportProgress() const { return exportProgress.load(); }
   size_t getVocalSegmentsCount() const { return vocalSegments.size(); }
   const std::vector<VocalSegment>& getVocalSegments() const { return vocalSegments; }
+  size_t getRecordingEndFrame() const { return recordingEndFrame; }
 
 private:
   int sampleRate;
@@ -104,6 +105,7 @@ private:
   std::vector<VocalSegment> vocalSegments;  // Track multiple vocal segments with absolute timeline positions
   size_t recordingStartFrame{0};
   size_t currentSegmentStartFrame{0};  // Buffer position where current recording segment started
+  size_t recordingEndFrame{0};         // Absolute song frame where recording was stopped (End button)
   std::atomic<bool> isPlaying{false};
   std::atomic<bool> isRecording{false};
   std::atomic<size_t> playbackFrame{0};

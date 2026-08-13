@@ -324,6 +324,40 @@ Future<void> startRecording() async {
     _isPlayingState = false;
     await _channel.invokeMethod('stopRecording');
   }
+  
+  /// NEW: Get the absolute recording end position (where End button was pressed)
+  Future<double> getRecordingEndPosition() async {
+    try {
+      final double? result = await _channel.invokeMethod<double>('getRecordingEndPosition');
+      return result ?? 0.0;
+    } catch (e) {
+      print('⚠️ getRecordingEndPosition error: $e');
+      return 0.0;
+    }
+  }
+  
+  /// NEW: Finalize current recording segment and get metadata
+  Future<List<VocalSegmentData>> getVocalSegments() async {
+    try {
+      final int count = await _channel.invokeMethod<int>('getVocalSegmentsCount') ?? 0;
+      if (count == 0) return [];
+      
+      List<VocalSegmentData> segments = [];
+      const int sampleRate = 48000;
+      
+      for (int i = 0; i < count; i++) {
+        final List<double>? data = await _channel.invokeMethod<List<double>>('getVocalSegmentData', {'index': i});
+        if (data != null && data.length >= 4) {
+          segments.add(VocalSegmentData.fromNativeData(data, sampleRate));
+        }
+      }
+      
+      return segments;
+    } catch (e) {
+      print('⚠️ getVocalSegments error: $e');
+      return [];
+    }
+  }
 
   @override
   Future<void> play() async {

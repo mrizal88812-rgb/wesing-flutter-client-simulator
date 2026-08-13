@@ -285,16 +285,26 @@ Java_com_okamiaaww_app_KaraokeDspEngine_getVocalSegmentData(JNIEnv *env,
   if (index >= static_cast<jint>(segments.size())) return nullptr;
   
   const auto& seg = segments[index];
-  jfloatArray result = env->NewFloatArray(4);
+  jfloatArray result = env->NewFloatArray(5);  // Changed to 5 to include recordingEndFrame
   if (result == nullptr) return nullptr;
   
-  float data[4] = {
+  float data[5] = {
     static_cast<float>(seg.startFrameInBuffer),
     static_cast<float>(seg.numFrames),
     static_cast<float>(seg.songStartFrame),
-    static_cast<float>(seg.songEndFrame)
+    static_cast<float>(seg.songEndFrame),
+    static_cast<float>(g_processor->getRecordingEndFrame())  // Add recording end frame
   };
   
-  env->SetFloatArrayRegion(result, 0, 4, data);
+  env->SetFloatArrayRegion(result, 0, 5, data);
   return result;
+}
+
+// NEW: Get the absolute recording end position (where End button was pressed)
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_okamiaaww_app_KaraokeDspEngine_getRecordingEndPosition(JNIEnv *env,
+                                                                jobject /* this */) {
+  if (!g_processor) return 0.0f;
+  size_t endFrame = g_processor->getRecordingEndFrame();
+  return static_cast<float>(endFrame) / g_processor->sampleRate;
 }
