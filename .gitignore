@@ -10,8 +10,8 @@
 
 # Dependencies
 node_modules/
-venv/
 .venv/
+venv/
 __pycache__/
 .mypy_cache/
 .pytest_cache/
@@ -27,6 +27,10 @@ target/
 .vscode/
 .idea/
 
+# System files
+.DS_Store
+Thumbs.db
+
 # Environment
 .env
 .env.local
@@ -35,4 +39,6 @@ target/
 # Build directories
 build/
 dist/
+coverage/
+htmlcov/
 ```
