@@ -54,10 +54,14 @@ void DspProcessor::stopRecording() {
   if (isRecording.load()) {
     // Finalize the current segment before stopping
     finalizeRecordingSegment();
+    // CRITICAL: Save the exact song position where recording ended (End button pressed)
+    recordingEndFrame = playbackFrame.load();
+    LOGD("[AUDIO] stopRecording(): recordingEndFrame saved at %zu (%.3f s)", 
+         recordingEndFrame, static_cast<float>(recordingEndFrame) / sampleRate);
   }
   isRecording.store(false);
   isPlaying.store(false);
-  LOGD("[AUDIO] stopRecording() invoked, total segments=%zu", vocalSegments.size());
+  LOGD("[AUDIO] stopRecording() invoked, total segments=%zu, recordingEndFrame=%zu", vocalSegments.size(), recordingEndFrame);
 }
 
 void DspProcessor::finalizeRecordingSegment() {

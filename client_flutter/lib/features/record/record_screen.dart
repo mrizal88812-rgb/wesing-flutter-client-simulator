@@ -603,7 +603,33 @@ debugPrint(
     
     _recordedDuration = Duration(milliseconds: ((songEnd - songStart) * 1000).round());
 
+    // CRITICAL: Stop recording FIRST to save recordingEndFrame in native engine
     await _audioEngine.stopRecording();
+    
+    // NEW: Get the absolute recording end position from native engine
+    final double recordingEndPositionSec = await _audioEngine.getRecordingEndPosition();
+    final double fullSongDurationSec = _audioEngine.getDuration().inMilliseconds / 1000.0;
+    
+    // Get vocal segments with updated metadata including recordingEndPosition
+    final List<VocalSegmentData> segmentsWithEndPos = await _audioEngine.getVocalSegments();
+    
+    // If no segments have recordingEndPosition, use the global recording end position for the last segment
+    List<VocalSegmentData> finalSegments = [];
+    for (int i = 0; i < segmentsWithEndPos.length; i++) {
+      var seg = segmentsWithEndPos[i];
+      // For the last segment, use the recording end position if not already set
+      if (i == segmentsWithEndPos.length - 1 && seg.recordingEndPositionSec == null) {
+        finalSegments.add(VocalSegmentData(
+          songStartTimeSec: seg.songStartTimeSec,
+          songEndTimeSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : seg.songEndTimeSec,
+          durationSec: seg.durationSec,
+          recordingEndPositionSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : null,
+        ));
+      } else {
+        finalSegments.add(seg);
+      }
+    }
+    
     _vinylAnimationController.stop();
 
     _isNavigatingToMix = true;
@@ -619,13 +645,9 @@ debugPrint(
           recordedDuration: _recordedDuration,
           score: scoreNotifier.value,
           songStart: songStart,
-          songEnd: songEnd,
-          fullSongDurationSec: _audioEngine.getDuration().inMilliseconds / 1000.0,
-          vocalSegments: _vocalSegments.map((s) => VocalSegmentData(
-            songStartTimeSec: s.songStartTimeSec,
-            songEndTimeSec: s.songEndTimeSec,
-            durationSec: s.durationSec,
-          )).toList(),
+          songEnd: recordingEndPositionSec > 0 ? recordingEndPositionSec : songEnd,  // Use actual end position
+          fullSongDurationSec: fullSongDurationSec,
+          vocalSegments: finalSegments,
         ),
       ),
     );

@@ -9,12 +9,24 @@ class VocalSegmentData {
   final double songStartTimeSec;
   final double songEndTimeSec;
   final double durationSec;
+  final double? recordingEndPositionSec; // NEW: Absolute position where End button was pressed
 
   const VocalSegmentData({
     required this.songStartTimeSec,
     required this.songEndTimeSec,
     required this.durationSec,
+    this.recordingEndPositionSec,
   });
+  
+  /// Create from native float array [bufferStart, numFrames, songStart, songEnd, recordingEndFrame]
+  factory VocalSegmentData.fromNativeData(List<double> data, int sampleRate) {
+    return VocalSegmentData(
+      songStartTimeSec: data[2] / sampleRate,
+      songEndTimeSec: data[3] / sampleRate,
+      durationSec: data[1] / sampleRate,
+      recordingEndPositionSec: data.length > 4 ? data[4] / sampleRate : null,
+    );
+  }
 }
 
 /// Predefined vocal effects presets for professional karaoke styling.
