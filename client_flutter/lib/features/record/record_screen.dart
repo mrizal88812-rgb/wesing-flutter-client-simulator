@@ -821,12 +821,12 @@ debugPrint(
                             _currentSegmentStart = null; // Will be reset when singing resumes at new position
                           }
                           
-                          // Pause playback immediately when scroll starts to prevent audio overlap
+                          // CRITICAL: Do NOT pause playback when user scrolls lyrics
+                          // User wants to hear the instrument continue while finding their place
+                          // Only track state for potential later use
                           if (isPlayingNotifier.value && !_isCountingDown) {
                             _wasPlayingBeforeScroll = true;
-                            _audioEngine.pause();
-                            _vinylAnimationController.stop();
-                            isPlayingNotifier.value = false;
+                            // DO NOT pause - let music continue during scroll
                           } else {
                             _wasPlayingBeforeScroll = false;
                           }
@@ -854,21 +854,13 @@ debugPrint(
                               // DEBOUNCE SEEK: Only seek after a short delay to ensure scroll has fully stopped
                               // This prevents multiple rapid seeks during scroll settling
                               _seekDebounce = Timer(const Duration(milliseconds: 100), () {
-                                // CRITICAL: Ensure we're paused before seek to prevent double playback
-                                bool wasAlreadyPaused = !isPlayingNotifier.value;
-                                if (isPlayingNotifier.value && !_isCountingDown) {
-                                  _audioEngine.pause();
-                                  _vinylAnimationController.stop();
-                                  isPlayingNotifier.value = false;
-                                }
-                                
                                 // CRITICAL: Store target position for countdown system when scrolling
                                 // User must press record button to start countdown and recording
                                 // Store the ORIGINAL target time (not adjusted) so countdown leads to correct lyric
                                 _targetTimelinePosition = targetTimeSec;
                                 print('[SCROLL] User scrolled to lyric at ${targetTimeSec}s, seeking to ${adjustedTargetTimeSec}s (${prepTimeSec}s prep time)');
 
-                                // Perform seek while paused - this prevents buffer overlap
+                                // Perform seek - music continues playing during seek for smooth UX
                                 // Seek to adjusted position (3 seconds before the lyric)
                                 _audioEngine.seek(Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt()));
                                 currentTimeNotifier.value = Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt());
@@ -903,19 +895,8 @@ debugPrint(
 
                           _lyricsScrollDebounce = Timer(const Duration(milliseconds: 1500), () {
                             _isUserScrollingLyrics = false;
-                            // Auto-resume playback ONLY if:
-                            // 1. User was playing before scroll
-                            // 2. Not currently counting down
-                            // 3. NOT currently recording (to avoid interrupting singing)
-                            // This provides smooth UX without disrupting active recording
-                            if (_wasPlayingBeforeScroll && !_isCountingDown && !isRecordingNotifier.value) {
-                              print('[SCROLL] Auto-resuming playback after scroll (not recording)');
-                              _audioEngine.play();
-                              _vinylAnimationController.repeat();
-                              isPlayingNotifier.value = true;
-                            } else if (isRecordingNotifier.value) {
-                              print('[SCROLL] Skipping auto-resume: user is currently recording');
-                            }
+                            // NO NEED to auto-resume since playback never stopped during scroll
+                            // Music continued playing throughout the scroll interaction
                           });
                         } else if (notification is ScrollUpdateNotification) {
                           // Throttle scroll updates: only update active lyric index during scroll
@@ -970,12 +951,9 @@ debugPrint(
                                   final adjustedTargetTimeSec = (targetTimeSec - prepTimeSec).clamp(0.0, targetTimeSec);
                                   
                                   if (adjustedTargetTimeSec >= 0) {
+                                    // CRITICAL: Do NOT pause playback when user taps lyrics
+                                    // User wants to hear the instrument continue while finding their place
                                     final wasPlaying = isPlayingNotifier.value;
-                                    if (wasPlaying) {
-                                      await _audioEngine.pause();
-                                      _vinylAnimationController.stop();
-                                      isPlayingNotifier.value = false;
-                                    }
 
                                     // CRITICAL: Store target position for countdown system
                                     // Do NOT start recording immediately - let user prepare first
@@ -984,6 +962,7 @@ debugPrint(
                                     print('[TAP] User tapped lyric at ${targetTimeSec}s, seeking to ${adjustedTargetTimeSec}s (${prepTimeSec}s prep time)');
 
                                     // Seek to the adjusted position immediately for preview (3 seconds before the lyric)
+                                    // Music continues playing during seek for smooth UX
                                     await _audioEngine.seek(Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt()));
                                     currentTimeNotifier.value = Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt());
                                     activeLyricIndexNotifier.value = idx;
@@ -1003,19 +982,8 @@ debugPrint(
                                     // Reset scrolling flag after delay
                                     _lyricsScrollDebounce = Timer(const Duration(milliseconds: 1500), () {
                                       _isUserScrollingLyrics = false;
-                                      // Auto-resume playback ONLY if:
-                                      // 1. User was playing before tap
-                                      // 2. Not currently counting down
-                                      // 3. NOT currently recording (to avoid interrupting singing)
-                                      // This provides smooth UX without disrupting active recording
-                                      if (wasPlaying && !_isCountingDown && !isRecordingNotifier.value) {
-                                        print('[TAP] Auto-resuming playback after lyric tap (not recording)');
-                                        _audioEngine.play();
-                                        _vinylAnimationController.repeat();
-                                        isPlayingNotifier.value = true;
-                                      } else if (isRecordingNotifier.value) {
-                                        print('[TAP] Skipping auto-resume: user is currently recording');
-                                      }
+                                      // NO NEED to auto-resume since playback never stopped during tap
+                                      // Music continued playing throughout the tap interaction
                                     });
                                   }
                                 },
