@@ -98,6 +98,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   Timer? _seekDebounce;
   int _lastScrolledLyricIndex = -1;
   double _lastUiUpdateSec = 0.0;
+  double? _targetTimelinePosition; // Target position after scroll/tap, before countdown
 
   // "Bersiap-siap" countdown shown right before recording/lyrics actually
   // start, so the singer has a moment to get ready.
@@ -431,6 +432,21 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
         return;
       }
 
+      // CRITICAL: Check if user has scrolled/tapped to a specific position before starting countdown
+      // If so, seek to that position first, then do countdown, then start recording at that position
+      double targetPosition = _targetTimelinePosition ?? 0.0;
+      
+      if (_targetTimelinePosition != null && !_isCountingDown) {
+        // Seek to the target position BEFORE countdown
+        print('[COUNTDOWN] Seeking to target position: ${_targetTimelinePosition}s before countdown');
+        await _audioEngine.pause();
+        await _audioEngine.seek(Duration(milliseconds: (_targetTimelinePosition! * 1000).round()));
+        currentTimeNotifier.value = Duration(milliseconds: (_targetTimelinePosition! * 1000).round());
+        
+        // Clear the target after seeking - it will be used during countdown
+        _targetTimelinePosition = null;
+      }
+
       // Beri jeda 3 detik untuk bersiap sebelum instrumental, lirik, dan
       // rekaman benar-benar mulai berjalan.
       if (mounted) {
@@ -447,10 +463,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
       if (!mounted) return;
       setState(() => _isCountingDown = false);
 
+      // CRITICAL: After countdown, start recording at the CURRENT timeline position
+      // This ensures vocal is placed at the correct absolute position in the song
       await _audioEngine.play();
       await _audioEngine.startRecording();
-      // CRITICAL: Store absolute timeline position when recording starts
-      // This ensures vocal segment is placed at correct position in master timeline
       _currentSegmentStart = currentTimeNotifier.value.inMilliseconds / 1000.0;
       print('[RECORD] Started recording at absolute timeline position: ${_currentSegmentStart}s');
       isPlayingNotifier.value = true;
@@ -828,42 +844,45 @@ debugPrint(
                               _seekDebounce = Timer(const Duration(milliseconds: 100), () {
                                 // CRITICAL: Ensure we're paused before seek to prevent double playback
                                 bool wasAlreadyPaused = !isPlayingNotifier.value;
-                                if (isPlayingNotifier.value) {
+                                if (isPlayingNotifier.value && !_isCountingDown) {
                                   _audioEngine.pause();
                                   _vinylAnimationController.stop();
                                   isPlayingNotifier.value = false;
                                 }
                                 
+                                // CRITICAL: Store target position for countdown system when scrolling
+                                // User must press record button to start countdown and recording
+                                _targetTimelinePosition = targetTimeSec;
+                                print('[SCROLL] User scrolled to ${targetTimeSec}s, stored as target for countdown');
+
                                 // Perform seek while paused - this prevents buffer overlap
                                 _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
                                 currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
                                 
-                                // CRITICAL: If user was singing before scroll, resume recording at new position
-                                // This starts a new vocal segment at the new timeline position
-                                if (_wasSingingBeforeSeek) {
+                                // CRITICAL: If user was singing before scroll, finalize the segment
+                                // User must explicitly press record button to start new segment at new position
+                                if (_wasSingingBeforeSeek && isRecordingNotifier.value) {
                                   _wasSingingBeforeSeek = false;
-                                  Future.delayed(const Duration(milliseconds: 50), () {
-                                    if (mounted && isRecordingNotifier.value) {
-                                      // Set new segment start at current timeline position (after seek)
-                                      _currentSegmentStart = currentTimeNotifier.value.inMilliseconds / 1000.0;
-                                      print('[SCROLL] Started new vocal segment at: ${_currentSegmentStart}s');
+                                  // Finalize the previous segment - user needs to press record to start new one
+                                  if (_currentSegmentStart != null) {
+                                    final double prevTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
+                                    if (prevTimelinePos - _currentSegmentStart! > 0.5) {
+                                      _vocalSegments.add(_VocalSegmentMetadata(
+                                        songStartTimeSec: _currentSegmentStart!,
+                                        songEndTimeSec: prevTimelinePos,
+                                        recordedDuration: Duration(milliseconds: ((prevTimelinePos - _currentSegmentStart!) * 1000).round()),
+                                      ));
+                                      print('[SCROLL] Finalized vocal segment: ${_currentSegmentStart}s → $prevTimelinePos (${_vocalSegments.length} total segments)');
                                     }
-                                  });
+                                  }
+                                  _currentSegmentStart = null;
+                                  // Note: We do NOT auto-resume recording here
+                                  // User must press record button to start new segment with countdown
                                 }
                                 
-                                // Resume playback if it was playing before scroll
-                                if (_wasPlayingBeforeScroll) {
-                                  _wasPlayingBeforeScroll = false;
-                                  
-                                  // Small delay to ensure C++ seek is fully committed
-                                  Future.delayed(const Duration(milliseconds: 30), () {
-                                    if (mounted && !_audioEngine.isPlaying()) {
-                                      _audioEngine.play();
-                                      _vinylAnimationController.repeat();
-                                      isPlayingNotifier.value = true;
-                                    }
-                                  });
-                                }
+                                // DO NOT auto-resume playback here
+                                // User must explicitly press record button to start countdown and recording
+                                // This gives user full control over when to start singing
                               });
                             }
                           }
@@ -924,6 +943,12 @@ debugPrint(
                                       isPlayingNotifier.value = false;
                                     }
 
+                                    // CRITICAL: Store target position for countdown system
+                                    // Do NOT start recording immediately - let user prepare first
+                                    _targetTimelinePosition = targetTimeSec;
+                                    print('[TAP] User tapped lyric at ${targetTimeSec}s, stored as target for countdown');
+
+                                    // Seek to the position immediately for preview
                                     await _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
                                     currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
                                     activeLyricIndexNotifier.value = idx;
@@ -936,15 +961,15 @@ debugPrint(
                                       );
                                     }
 
-                                    if (wasPlaying) {
-                                      await _audioEngine.play();
-                                      _vinylAnimationController.repeat();
-                                      isPlayingNotifier.value = true;
-                                    }
+                                    // DO NOT auto-resume playback here
+                                    // User must explicitly press record button to start countdown and recording
+                                    // This prevents accidental recording and gives user control
+
+                                    // Reset scrolling flag after delay
+                                    _lyricsScrollDebounce = Timer(const Duration(milliseconds: 1500), () {
+                                      _isUserScrollingLyrics = false;
+                                    });
                                   }
-                                  _lyricsScrollDebounce = Timer(const Duration(milliseconds: 1500), () {
-                                    _isUserScrollingLyrics = false;
-                                  });
                                 },
                               );
                             },
