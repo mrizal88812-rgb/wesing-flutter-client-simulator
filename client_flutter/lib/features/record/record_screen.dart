@@ -573,6 +573,7 @@ debugPrint(
           score: scoreNotifier.value,
           songStart: _recordingSongStart,
           songEnd: _recordingSongEnd,
+          fullSongDurationSec: _audioEngine.getDuration().inMilliseconds / 1000.0,
         ),
       ),
     );

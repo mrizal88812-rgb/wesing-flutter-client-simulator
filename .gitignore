@@ -1,21 +1,40 @@
-# Flutter/Dart specific
+```
+# Flutter/Dart specific ignores
 .dart_tool/
 .build/
 packages/
 *.iws
-*.sw?
+*.lock
+*.tmp
+*.temp
+*.log
 *~
-/.dart_tool
-/.pub-cache
-/pubspec.lock
 
-# IDE files
+# iOS
+ios/Pods/
+ios/build/
+ios/.symlinks/
+Podfile.lock
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+
+# Web
+build/web/
+
+# LSP
+.dart_tool/
+.dart_tool/package_config.json
+
+# IDE specific
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Environment variables
+# Environment
 .env
 .env.local
 *.env.*
@@ -23,9 +42,16 @@ packages/
 # Logs
 *.log
 
-# OS generated files
+# Coverage
+coverage/
+*.coverage
+
+# Temporary files
+*.tmp
+*.temp
 .DS_Store
 Thumbs.db
+```
 
 # Build artifacts
 build/
