@@ -53,3 +53,5 @@ vendor/
 .DS_Store
 Thumbs.db
 ```
+/client_flutter/android/.gradle
+/client_flutter/build
