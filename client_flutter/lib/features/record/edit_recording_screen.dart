@@ -9,7 +9,7 @@ import '../../services/audio/karaoke_audio_engine.dart';
 import '../../data/repositories_impl.dart';
 import '../../data/models/audio_preset.dart';
 import '../../main.dart';
-import 'record_screen.dart';
+import 'record_screen.dart' show RecordScreen; // Only import RecordScreen class to avoid VocalSegmentData conflict
 
 class RecordingTemplate {
   final String id;
@@ -473,11 +473,8 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
     String exportedFilePath;
     try {
       // Pass vocal segments metadata to C++ export engine for proper multi-segment mixing
-      final List<Map<String, double>>? segmentsData = widget.vocalSegments?.map((s) => {
-        'songStart': s.songStartTimeSec,
-        'songEnd': s.songEndTimeSec,
-        'duration': s.durationSec,
-      }).toList();
+      // widget.vocalSegments is already List<VocalSegmentData>, no mapping needed
+      final List<VocalSegmentData>? segmentsData = widget.vocalSegments;
       
       print('[EXPORT] Exporting mix with ${segmentsData?.length ?? 0} vocal segments');
       

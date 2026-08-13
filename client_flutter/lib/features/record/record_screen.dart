@@ -37,19 +37,8 @@ class _VocalSegmentMetadata {
 }
 
 /// Public version of vocal segment metadata passed to EditRecordingScreen.
-/// Deprecated: Use VocalSegmentData from karoke_audio_engine.dart instead.
-@Deprecated('Use VocalSegmentData from karaoke_audio_engine.dart')
-class VocalSegmentData {
-  final double songStartTimeSec;
-  final double songEndTimeSec;
-  final double durationSec;
-
-  const VocalSegmentData({
-    required this.songStartTimeSec,
-    required this.songEndTimeSec,
-    required this.durationSec,
-  });
-}
+/// VocalSegmentData has been moved to karaoke_audio_engine.dart to avoid import conflicts.
+/// Only use VocalSegmentData from package:wesing_mvp/services/audio/karaoke_audio_engine.dart
 
 class RecordScreen extends StatefulWidget {
   final Song song;
