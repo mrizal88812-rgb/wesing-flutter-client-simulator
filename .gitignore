@@ -1,45 +1,58 @@
 ```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
-*.o
-*.obj
-dist/
-build/
-target/
+# Flutter/Dart build artifacts
+/build/
+/.dart_tool/
+/pubspec.lock
 
-# Dependencies
-.venv/
-venv/
-node_modules/
-.julia/
-.zig/
+# IDE files
+/.vscode/
+/.idea/
+*.iml
+*.ipr
+*.iws
 
-# Logs and temp files
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
+
+# Temporary files
 *.tmp
 *.swp
 *.swo
 
-# Environment
+# Environment variables
 .env
 .env.local
-.env.*
+*.env.*
 
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
+# Coverage reports
+/coverage/
+/htmlcov/
 
-# System files
-.DS_Store
-Thumbs.db
+# Python artifacts (if any Python files exist in the project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
+# Node artifacts (if any JS/TS files exist in the project)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compiled Binary files
+*.exe
+*.dll
+*.so
+*.a
+*.o
+*.out
 
 # Compressed files
 *.zip
