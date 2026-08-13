@@ -78,3 +78,7 @@ yarn-error.log*
 *.tar.xz
 *.tar.zst
 ```
+/client_flutter/.dart_tool
+/client_flutter/android/.gradle
+/client_flutter/build
+/storage/songs
