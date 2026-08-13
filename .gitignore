@@ -28,6 +28,43 @@ Thumbs.db
 coverage/
 *.coverage
 
-# Distribution / packaging
-bin/
+# Environment variables
+.env
+.env.local
+*.env
+.env.*
 ```
+```
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```
+# OS generated files
+.DS_Store
+Thumbs.db
+```
+/client_flutter/build
+/node_modules
+/client_flutter/android/.gradle
+/client_flutter/android/.gradle
+/client_flutter/.dart_tool
