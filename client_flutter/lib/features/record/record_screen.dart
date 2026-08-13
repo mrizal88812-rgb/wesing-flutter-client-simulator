@@ -483,13 +483,19 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   }
 
   Future<void> _togglePlayPause() async {
+    if (_isCountingDown) return;
+    
+    // If not recording, start the recording flow (with countdown if needed)
     if (!isRecordingNotifier.value) {
       await _startRecordingAndPlay();
     } else {
+      // Already recording - toggle pause/resume
       if (isPlayingNotifier.value) {
+        // Pause
         await _audioEngine.pause();
         _vinylAnimationController.stop();
       } else {
+        // Resume playback (but not recording - recording state is managed separately)
         await _audioEngine.play();
         _vinylAnimationController.repeat();
       }
@@ -897,6 +903,19 @@ debugPrint(
 
                           _lyricsScrollDebounce = Timer(const Duration(milliseconds: 1500), () {
                             _isUserScrollingLyrics = false;
+                            // Auto-resume playback ONLY if:
+                            // 1. User was playing before scroll
+                            // 2. Not currently counting down
+                            // 3. NOT currently recording (to avoid interrupting singing)
+                            // This provides smooth UX without disrupting active recording
+                            if (_wasPlayingBeforeScroll && !_isCountingDown && !isRecordingNotifier.value) {
+                              print('[SCROLL] Auto-resuming playback after scroll (not recording)');
+                              _audioEngine.play();
+                              _vinylAnimationController.repeat();
+                              isPlayingNotifier.value = true;
+                            } else if (isRecordingNotifier.value) {
+                              print('[SCROLL] Skipping auto-resume: user is currently recording');
+                            }
                           });
                         } else if (notification is ScrollUpdateNotification) {
                           // Throttle scroll updates: only update active lyric index during scroll
@@ -984,6 +1003,19 @@ debugPrint(
                                     // Reset scrolling flag after delay
                                     _lyricsScrollDebounce = Timer(const Duration(milliseconds: 1500), () {
                                       _isUserScrollingLyrics = false;
+                                      // Auto-resume playback ONLY if:
+                                      // 1. User was playing before tap
+                                      // 2. Not currently counting down
+                                      // 3. NOT currently recording (to avoid interrupting singing)
+                                      // This provides smooth UX without disrupting active recording
+                                      if (wasPlaying && !_isCountingDown && !isRecordingNotifier.value) {
+                                        print('[TAP] Auto-resuming playback after lyric tap (not recording)');
+                                        _audioEngine.play();
+                                        _vinylAnimationController.repeat();
+                                        isPlayingNotifier.value = true;
+                                      } else if (isRecordingNotifier.value) {
+                                        print('[TAP] Skipping auto-resume: user is currently recording');
+                                      }
                                     });
                                   }
                                 },
