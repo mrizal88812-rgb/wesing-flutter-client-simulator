@@ -1,58 +1,54 @@
 ```
-# Flutter/Dart build artifacts
-/build/
-/.dart_tool/
-/pubspec.lock
-
-# IDE files
-/.vscode/
-/.idea/
-*.iml
-*.ipr
-*.iws
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.swp
-*.swo
-
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Coverage reports
-/coverage/
-/htmlcov/
-
-# Python artifacts (if any Python files exist in the project)
-__pycache__/
+# Compiled and build artifacts
 *.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-
-# Node artifacts (if any JS/TS files exist in the project)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Compiled Binary files
+__pycache__/
+*.o
+*.obj
+*.class
 *.exe
 *.dll
 *.so
 *.a
-*.o
 *.out
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+.env
+.env.local
+.env.*
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build directories
+dist/
+build/
+target/
+.gradle/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Python specific
+.mypy_cache/
+.pytest_cache/
 
 # Compressed files
 *.zip
@@ -78,7 +74,3 @@ yarn-error.log*
 *.tar.xz
 *.tar.zst
 ```
-/client_flutter/.dart_tool
-/client_flutter/android/.gradle
-/client_flutter/build
-/storage/songs

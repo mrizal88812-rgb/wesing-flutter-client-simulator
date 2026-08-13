@@ -1419,8 +1419,8 @@ class _LyricRow extends StatelessWidget {
         final isActive = index == activeIndex;
         final isPast = index < activeIndex;
         final double textSize = isActive
-            ? responsiveFontSize(context, 28.0)
-            : (isPast ? responsiveFontSize(context, 21.0) : responsiveFontSize(context, 23.0));
+            ? responsiveFontSize(context, 20.0)
+            : (isPast ? responsiveFontSize(context, 15.0) : responsiveFontSize(context, 17.0));
 
         final TextStyle baseStyle = TextStyle(
           fontSize: textSize,
