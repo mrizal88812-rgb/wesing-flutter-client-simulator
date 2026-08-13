@@ -112,6 +112,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   final List<_VocalSegmentMetadata> _vocalSegments = [];
   double? _currentSegmentStart; // Absolute timeline position when current singing started
   bool _wasSingingBeforeSeek = false; // Track if user was singing before seeking
+  bool _isFinalizingSegment = false; // Prevent double-finalization during scroll/tap
   
   // Legacy variable for backward compatibility (deprecated, use _vocalSegments instead)
   double _recordingSongStart = 0.0;
@@ -917,8 +918,9 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                 
                                 // CRITICAL: If user was singing before scroll, finalize the segment ONCE
                                 // User must explicitly press record button to start new segment at new position
-                                if (_wasSingingBeforeSeek && isRecordingNotifier.value && _currentSegmentStart != null) {
+                                if (_wasSingingBeforeSeek && isRecordingNotifier.value && _currentSegmentStart != null && !_isFinalizingSegment) {
                                   _wasSingingBeforeSeek = false;
+                                  _isFinalizingSegment = true;
                                   
                                   // CRITICAL FIX: Get the ACTUAL timeline position BEFORE seek happened
                                   // The seek already updated currentTimeNotifier, so we need to calculate
@@ -939,9 +941,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                   
                                   // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
                                   // The segment is finalized, so we must stop capturing audio
-                                  _audioEngine.stopRecording();
+                                  await _audioEngine.stopRecording();
                                   isRecordingNotifier.value = false;
                                   _currentSegmentStart = null;
+                                  _isFinalizingSegment = false;
                                   print('[SCROLL END] Stopped recording and cleared _currentSegmentStart');
                                   // Note: User must press record button to start new segment with countdown
                                 } else if (_wasSingingBeforeSeek) {
@@ -1022,7 +1025,8 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
 
                                     // CRITICAL: If user was singing before tap, finalize the segment
                                     // Same logic as scroll - stop recording to prevent audio loop/duplication
-                                    if (isRecordingNotifier.value && _currentSegmentStart != null) {
+                                    if (isRecordingNotifier.value && _currentSegmentStart != null && !_isFinalizingSegment) {
+                                      _isFinalizingSegment = true;
                                       // Finalize the previous segment using adjusted target time as end point
                                       final double segmentEndTimeSec = adjustedTargetTimeSec;
                                       
@@ -1038,9 +1042,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                       }
                                       
                                       // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
-                                      _audioEngine.stopRecording();
+                                      await _audioEngine.stopRecording();
                                       isRecordingNotifier.value = false;
                                       _currentSegmentStart = null;
+                                      _isFinalizingSegment = false;
                                       print('[TAP] Stopped recording and cleared _currentSegmentStart');
                                     }
 
