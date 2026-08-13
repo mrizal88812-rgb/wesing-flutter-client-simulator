@@ -44,3 +44,5 @@ pubspec.lock
 .DS_Store
 Thumbs.db
 ```
+/client_flutter/build
+/node_modules
