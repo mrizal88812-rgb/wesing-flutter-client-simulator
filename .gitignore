@@ -65,3 +65,4 @@ Thumbs.db
 *.tar.xz
 *.tar.zst
 /node_modules
+/client_flutter/android/.gradle
