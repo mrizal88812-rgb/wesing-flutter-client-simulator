@@ -164,7 +164,13 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
   }
 
   Future<void> _initPlayback() async {
-    _audioEngine.setVocalRange(widget.songStart, widget.songEnd);
+    // CRITICAL: Set vocal range to FULL song duration for proper multi-segment playback
+    // NOT just the recorded range. This ensures all vocal segments play at their
+    // absolute timeline positions, not relative to recording start.
+    final double fullSongDuration = _audioEngine.getDuration().inMilliseconds / 1000.0;
+    _audioEngine.setVocalRange(0.0, fullSongDuration);
+    
+    // Start from songStart position (where first vocal segment begins)
     final double startMs = widget.songStart * 1000.0;
     await _audioEngine.seek(Duration(milliseconds: startMs.round()));
     _startTimelineTimer();
@@ -179,10 +185,12 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
       if (!mounted) return;
 
       final double posSec = pos.inMilliseconds / 1000.0;
+      // CRITICAL: Use full song duration for loop detection, not just recorded range
+      final double fullSongDuration = _audioEngine.getDuration().inMilliseconds / 1000.0;
       final double endSec = widget.songEnd > widget.songStart ? widget.songEnd : (_duration.inMilliseconds / 1000.0);
 
-      if (posSec >= endSec) {
-        // Loop back to start
+      if (posSec >= endSec && posSec < fullSongDuration) {
+        // Loop back to start of recorded range
         final int startMs = (widget.songStart * 1000).round();
         _audioEngine.seek(Duration(milliseconds: startMs));
         _vinylAnimationController.repeat();
@@ -195,6 +203,8 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
       }
 
       if (!_isDraggingSlider) {
+        // CRITICAL: Calculate relative time correctly for multi-segment playback
+        // posSec is absolute timeline position, we need to show relative to recording start
         final double relativeSec = (posSec - widget.songStart).clamp(0.0, _duration.inMilliseconds / 1000.0);
         setState(() {
           _currentTime = Duration(milliseconds: (relativeSec * 1000).round());
@@ -1753,7 +1763,13 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
                           // DEBOUNCE SEEK: Wait 100ms after user releases slider to prevent rapid seeks
                           _seekDebounce?.cancel();
                           _seekDebounce = Timer(const Duration(milliseconds: 100), () {
-                            final double absoluteMs = (widget.songStart * 1000.0) + val;
+                            // CRITICAL: Convert relative slider position to ABSOLUTE timeline position
+                            // val is relative to recording start (widget.songStart)
+                            // We need absolute position for multi-segment vocal playback
+                            final double relativeSec = val / 1000.0;
+                            final double absoluteSec = widget.songStart + relativeSec;
+                            final double absoluteMs = absoluteSec * 1000.0;
+                            
                             // Pause before seek to prevent audio stuttering
                             bool wasPlaying = isPlaying;
                             if (wasPlaying) {
