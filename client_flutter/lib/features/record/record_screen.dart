@@ -506,16 +506,29 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
 
   void _handleEndPressed() {
     final double currentSec = currentTimeNotifier.value.inMilliseconds / 1000.0;
-    final double singingDurationSec = (isRecordingNotifier.value && currentSec > _recordingSongStart) 
-        ? (currentSec - _recordingSongStart) 
-        : currentSec;
-debugPrint(
-  'END DEBUG: '
-  'currentSec=$currentSec, '
-  'recordingStart=$_recordingSongStart, '
-  'isRecording=${isRecordingNotifier.value}',
-);
-    if (singingDurationSec < 3) {
+    
+    // CRITICAL: Use _vocalSegments to calculate total singing duration, not legacy _recordingSongStart
+    // This ensures accurate duration calculation for multi-segment recordings
+    double totalSingingDurationSec = 0.0;
+    if (_vocalSegments.isNotEmpty) {
+      for (var segment in _vocalSegments) {
+        totalSingingDurationSec += segment.durationSec;
+      }
+    }
+    // Also add current ongoing segment if user is still singing
+    if (isRecordingNotifier.value && _currentSegmentStart != null && currentSec > _currentSegmentStart!) {
+      totalSingingDurationSec += (currentSec - _currentSegmentStart!);
+    }
+    
+    debugPrint(
+      'END DEBUG: '
+      'currentSec=$currentSec, '
+      'totalSingingDuration=${totalSingingDurationSec.toStringAsFixed(2)}s, '
+      'segments=${_vocalSegments.length}, '
+      'isRecording=${isRecordingNotifier.value}',
+    );
+    
+    if (totalSingingDurationSec < 3) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -553,7 +566,7 @@ debugPrint(
           ),
         ),
       );
-    } else if (singingDurationSec > 30) {
+    } else if (totalSingingDurationSec > 30) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -603,6 +616,7 @@ debugPrint(
     _uiTimer?.cancel();
     
     // CRITICAL: Finalize the last vocal segment when ending recording
+    // This must happen BEFORE stopRecording() to ensure all singing is captured
     final double currentTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
     if (isRecordingNotifier.value && _currentSegmentStart != null) {
       if (currentTimelinePos - _currentSegmentStart! > 0.5) {
@@ -612,7 +626,13 @@ debugPrint(
           recordedDuration: Duration(milliseconds: ((currentTimelinePos - _currentSegmentStart!) * 1000).round()),
         ));
         print('[END] Finalized last vocal segment: ${_currentSegmentStart}s → $currentTimelinePos (${_vocalSegments.length} total segments)');
+      } else {
+        print('[END] Skipping segment finalization - duration too short (${currentTimelinePos - _currentSegmentStart!}s)');
       }
+    } else if (!isRecordingNotifier.value) {
+      print('[END] Not recording, skipping segment finalization');
+    } else if (_currentSegmentStart == null) {
+      print('[END] No active segment start, skipping finalization');
     }
     
     // Calculate overall recording range (from first segment start to last segment end)
@@ -626,14 +646,20 @@ debugPrint(
     _recordedDuration = Duration(milliseconds: ((songEnd - songStart) * 1000).round());
 
     // CRITICAL: Stop recording FIRST to save recordingEndFrame in native engine
+    // This captures the final recording state and prepares segments for retrieval
+    print('[END] Calling stopRecording()...');
     await _audioEngine.stopRecording();
     
     // NEW: Get the absolute recording end position from native engine
     final double recordingEndPositionSec = await _audioEngine.getRecordingEndPosition();
     final double fullSongDurationSec = _audioEngine.getDuration().inMilliseconds / 1000.0;
     
+    print('[END] Recording ended at: ${recordingEndPositionSec}s, full song duration: ${fullSongDurationSec}s');
+    print('[END] Vocal segments count: ${_vocalSegments.length}');
+    
     // Get vocal segments with updated metadata including recordingEndPosition
     final List<VocalSegmentData> segmentsWithEndPos = await _audioEngine.getVocalSegments();
+    print('[END] Retrieved ${segmentsWithEndPos.length} segments from native engine');
     
     // If no segments have recordingEndPosition, use the global recording end position for the last segment
     List<VocalSegmentData> finalSegments = [];
@@ -649,6 +675,19 @@ debugPrint(
         ));
       } else {
         finalSegments.add(seg);
+      }
+    }
+    
+    if (finalSegments.isEmpty && _vocalSegments.isNotEmpty) {
+      // Fallback: Use Flutter-side segments if native engine returned none
+      print('[END] WARNING: Native engine returned no segments, using Flutter-side segments as fallback');
+      for (var seg in _vocalSegments) {
+        finalSegments.add(VocalSegmentData(
+          songStartTimeSec: seg.songStartTimeSec,
+          songEndTimeSec: seg.songEndTimeSec,
+          durationSec: seg.durationSec,
+          recordingEndPositionSec: null,
+        ));
       }
     }
     
@@ -805,20 +844,12 @@ debugPrint(
                           _lyricsScrollDebounce?.cancel();
                           _seekDebounce?.cancel();
                           
-                          // CRITICAL: If user was singing and scrolls, finalize current vocal segment
+                          // CRITICAL: Do NOT finalize segment on ScrollStart - only on ScrollEnd
+                          // Finalizing here causes duplicate segments when user scrolls multiple times
+                          // Track that user was singing, but wait until scroll ends to finalize
                           if (isRecordingNotifier.value && _currentSegmentStart != null) {
-                            final double currentTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
-                            // Only save segment if it has meaningful duration (> 0.5s)
-                            if (currentTimelinePos - _currentSegmentStart! > 0.5) {
-                              _vocalSegments.add(_VocalSegmentMetadata(
-                                songStartTimeSec: _currentSegmentStart!,
-                                songEndTimeSec: currentTimelinePos,
-                                recordedDuration: Duration(milliseconds: ((currentTimelinePos - _currentSegmentStart!) * 1000).round()),
-                              ));
-                              print('[SCROLL] Finalized vocal segment during scroll: ${_currentSegmentStart}s → $currentTimelinePos (${_vocalSegments.length} total segments)');
-                            }
                             _wasSingingBeforeSeek = true;
-                            _currentSegmentStart = null; // Will be reset when singing resumes at new position
+                            print('[SCROLL START] User was singing at ${_currentSegmentStart}s, will finalize on scroll end');
                           }
                           
                           // CRITICAL: Do NOT pause playback when user scrolls lyrics
@@ -865,25 +896,27 @@ debugPrint(
                                 _audioEngine.seek(Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt()));
                                 currentTimeNotifier.value = Duration(milliseconds: (adjustedTargetTimeSec * 1000).toInt());
                                 
-                                // CRITICAL: If user was singing before scroll, finalize the segment
+                                // CRITICAL: If user was singing before scroll, finalize the segment ONCE
                                 // User must explicitly press record button to start new segment at new position
-                                if (_wasSingingBeforeSeek && isRecordingNotifier.value) {
+                                if (_wasSingingBeforeSeek && isRecordingNotifier.value && _currentSegmentStart != null) {
                                   _wasSingingBeforeSeek = false;
                                   // Finalize the previous segment - user needs to press record to start new one
-                                  if (_currentSegmentStart != null) {
-                                    final double prevTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
-                                    if (prevTimelinePos - _currentSegmentStart! > 0.5) {
-                                      _vocalSegments.add(_VocalSegmentMetadata(
-                                        songStartTimeSec: _currentSegmentStart!,
-                                        songEndTimeSec: prevTimelinePos,
-                                        recordedDuration: Duration(milliseconds: ((prevTimelinePos - _currentSegmentStart!) * 1000).round()),
-                                      ));
-                                      print('[SCROLL] Finalized vocal segment: ${_currentSegmentStart}s → $prevTimelinePos (${_vocalSegments.length} total segments)');
-                                    }
+                                  final double prevTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
+                                  if (prevTimelinePos - _currentSegmentStart! > 0.5) {
+                                    _vocalSegments.add(_VocalSegmentMetadata(
+                                      songStartTimeSec: _currentSegmentStart!,
+                                      songEndTimeSec: prevTimelinePos,
+                                      recordedDuration: Duration(milliseconds: ((prevTimelinePos - _currentSegmentStart!) * 1000).round()),
+                                    ));
+                                    print('[SCROLL END] Finalized vocal segment: ${_currentSegmentStart}s → $prevTimelinePos (${_vocalSegments.length} total segments)');
                                   }
                                   _currentSegmentStart = null;
+                                  print('[SCROLL END] Cleared _currentSegmentStart, user must press record to start new segment');
                                   // Note: We do NOT auto-resume recording here
                                   // User must press record button to start new segment with countdown
+                                } else if (_wasSingingBeforeSeek) {
+                                  // Reset flag even if not recording anymore
+                                  _wasSingingBeforeSeek = false;
                                 }
                                 
                                 // DO NOT auto-resume playback here
@@ -901,6 +934,8 @@ debugPrint(
                         } else if (notification is ScrollUpdateNotification) {
                           // Throttle scroll updates: only update active lyric index during scroll
                           // Do NOT seek during scroll to prevent audio stuttering
+                          // CRITICAL: Do NOT finalize segments during scroll - only on ScrollEnd
+                          // This prevents multiple segment finalizations causing duplicate recordings
                           double offset = notification.metrics.pixels;
                           int centeredIndex = (offset / lyricItemHeight).round().clamp(0, widget.song.lyrics.length - 1);
                           if (centeredIndex >= 0 && centeredIndex < widget.song.lyrics.length) {
