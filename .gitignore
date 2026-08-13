@@ -33,11 +33,6 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
 # Build directories
 dist/
 build/
@@ -47,6 +42,9 @@ target/
 # Python specific
 .mypy_cache/
 .pytest_cache/
+.coverage
+coverage/
+htmlcov/
 
 # Compressed files
 *.zip
