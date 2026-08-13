@@ -926,7 +926,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                   // The user was singing until they started scrolling, so use the current time
                                   // DO NOT use adjustedTargetTimeSec as that's 3 seconds BEFORE the target lyric
                                   // We need the ACTUAL time when user stopped singing (which is approximately now)
-                                  final double currentTimeSec = _audioEngine.getCurrentPosition().inMilliseconds / 1000.0;
+                                  final double currentTimeSec = currentTimeNotifier.value.inMilliseconds / 1000.0;
                                   final double segmentEndTimeSec = currentTimeSec;
                                   
                                   if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
@@ -942,7 +942,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                   
                                   // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
                                   // The segment is finalized, so we must stop capturing audio
-                                  await _audioEngine.stopRecording();
+                                  _audioEngine.stopRecording();
                                   isRecordingNotifier.value = false;
                                   _currentSegmentStart = null;
                                   _isFinalizingSegment = false;
@@ -1032,7 +1032,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                       // The user was singing until they tapped, so use the current time
                                       // DO NOT use adjustedTargetTimeSec as that's 3 seconds BEFORE the target lyric
                                       // We need the ACTUAL time when user stopped singing (which is approximately now)
-                                      final double currentTimeSec = _audioEngine.getCurrentPosition().inMilliseconds / 1000.0;
+                                      final double currentTimeSec = currentTimeNotifier.value.inMilliseconds / 1000.0;
                                       final double segmentEndTimeSec = currentTimeSec;
                                       
                                       if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
@@ -1047,7 +1047,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                       }
                                       
                                       // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
-                                      await _audioEngine.stopRecording();
+                                      _audioEngine.stopRecording();
                                       isRecordingNotifier.value = false;
                                       _currentSegmentStart = null;
                                       _isFinalizingSegment = false;
