@@ -1,5 +1,6 @@
 #include "dsp_processor.h"
 #include <algorithm>
+#include <unistd.h>
 
 DspProcessor::DspProcessor(int sampleRate) : sampleRate(sampleRate) {
   revBuffer1.resize(static_cast<size_t>(0.03604f * sampleRate), 0.0f);
