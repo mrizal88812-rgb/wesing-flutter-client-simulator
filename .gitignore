@@ -19,6 +19,25 @@ venv/
 .env.local
 .env.*
 
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Editors
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
 # Build directories
 dist/
 build/
@@ -26,40 +45,8 @@ target/
 .gradle/
 
 # Python specific
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
-.PyInstaller/
-.coverage
-coverage/
-htmlcov/
-
-# Flutter specific
-.dart_tool/
-.packages
-.pub/
-build/
-*.g.dart
-*.freezed.dart
-
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
+.mypy_cache/
+.pytest_cache/
 
 # Compressed files
 *.zip
@@ -80,4 +67,8 @@ Thumbs.db
 *.Z
 *.lz
 *.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```
