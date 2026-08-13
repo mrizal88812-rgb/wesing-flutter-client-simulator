@@ -97,6 +97,7 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
   StreamSubscription<Duration>? _positionSubscription;
   bool isPlaying = false;
   bool _isDraggingSlider = false;
+  Timer? _seekDebounce;
   Duration _currentTime = Duration.zero;
   late Duration _duration;
 
@@ -221,6 +222,7 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
     WidgetsBinding.instance.removeObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _positionSubscription?.cancel();
+    _seekDebounce?.cancel();
     _vinylAnimationController.dispose();
     _captionController.dispose();
     _audioEngine.dispose();
@@ -1739,6 +1741,8 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
                         max: math.max(100.0, _duration.inMilliseconds.toDouble()),
                         onChangeStart: (val) {
                           _isDraggingSlider = true;
+                          // Cancel any pending seek when starting a new drag
+                          _seekDebounce?.cancel();
                         },
                         onChanged: (val) {
                           setState(() {
@@ -1746,8 +1750,29 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
                           });
                         },
                         onChangeEnd: (val) {
-                          final double absoluteMs = (widget.songStart * 1000.0) + val;
-                          _audioEngine.seek(Duration(milliseconds: absoluteMs.round()));
+                          // DEBOUNCE SEEK: Wait 100ms after user releases slider to prevent rapid seeks
+                          _seekDebounce?.cancel();
+                          _seekDebounce = Timer(const Duration(milliseconds: 100), () {
+                            final double absoluteMs = (widget.songStart * 1000.0) + val;
+                            // Pause before seek to prevent audio stuttering
+                            bool wasPlaying = isPlaying;
+                            if (wasPlaying) {
+                              _audioEngine.pause();
+                              _vinylAnimationController.stop();
+                              isPlaying = false;
+                            }
+                            _audioEngine.seek(Duration(milliseconds: absoluteMs.round()));
+                            // Resume after seek completes
+                            if (wasPlaying) {
+                              Future.delayed(const Duration(milliseconds: 30), () {
+                                if (mounted && !_audioEngine.isPlaying()) {
+                                  _audioEngine.play();
+                                  _vinylAnimationController.repeat();
+                                  isPlaying = true;
+                                }
+                              });
+                            }
+                          });
                           _isDraggingSlider = false;
                         },
                       ),
