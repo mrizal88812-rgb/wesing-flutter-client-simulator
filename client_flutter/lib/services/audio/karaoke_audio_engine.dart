@@ -160,6 +160,13 @@ abstract class KaraokeAudioEngine {
 
   /// Reset all audio effect parameter sliders to default values.
   void resetEffects();
+
+  // --- RECORDING METADATA ACCESSORS (for multi-segment karaoke) ---
+  /// Get the absolute recording end position in seconds (where End button was pressed)
+  Future<double> getRecordingEndPosition();
+  
+  /// Get list of vocal segments with their absolute timeline positions
+  Future<List<VocalSegmentData>> getVocalSegments();
 }
 
 /// Simple model representing standard effects parameter structures for ease of sharing.
