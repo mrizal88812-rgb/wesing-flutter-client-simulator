@@ -76,3 +76,4 @@ Thumbs.db
 /node_modules
 /client_flutter/android/.gradle
 /client_flutter/android/.gradle
+/client_flutter/.dart_tool
