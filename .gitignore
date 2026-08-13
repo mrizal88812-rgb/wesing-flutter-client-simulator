@@ -48,3 +48,35 @@ htmlcov/
 .DS_Store
 Thumbs.db
 ```
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+```
+```
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+```
+/client_flutter/android/.gradle
+/client_flutter/build
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool/flutter_build
+/client_flutter/.dart_tool/hooks_runner
