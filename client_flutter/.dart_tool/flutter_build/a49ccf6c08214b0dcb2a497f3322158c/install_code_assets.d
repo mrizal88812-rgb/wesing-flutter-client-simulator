@@ -1,0 +1,1 @@
+ /Volumes/DataKerjaan/antigravity_project/wesing-flutter-client-simulator/client_flutter/.dart_tool/flutter_build/a49ccf6c08214b0dcb2a497f3322158c/native_assets.json: 

@@ -10,4 +10,18 @@ node_modules/
 *.log
 *.tmp
 *.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
 ```
+/client_flutter/android/.gradle
+/client_flutter/build
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
