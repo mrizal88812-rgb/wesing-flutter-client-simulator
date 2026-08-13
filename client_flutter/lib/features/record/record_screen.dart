@@ -184,6 +184,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
       
       await _audioEngine.loadInstrumental(localPath);
       _audioEngine.setMonitoringEnabled(_monitoringEnabled);
+      _audioEngine.setLatencyOffset(_latencyOffset);
 
       // Set duration immediately once the instrumental is loaded, instead of
       // waiting for the (throttled) position-stream listener to eventually
@@ -267,9 +268,11 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
       );
 
       // 4. Record pitch sample in Scoring Engine
+      // Apply latency compensation for accurate vocal synchronization
+      final double compensatedTimeSec = timeSec - (_latencyOffset / 1000.0);
       if (userHz > 10.0 && (isPlayingNotifier.value || isRecordingNotifier.value)) {
         _scoringEngine.addSample(
-          timeSec: timeSec,
+          timeSec: compensatedTimeSec,
           userMidi: _currentPitchResult.midiNote,
           targetMidi: targetMidi,
           centsError: _currentPitchResult.centsError,
@@ -277,7 +280,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
         );
 
         _userPitchTrail.add(PitchTrailPoint(
-          timestampSec: timeSec,
+          timestampSec: compensatedTimeSec,
           userMidi: _currentPitchResult.midiNote,
           targetMidi: targetMidi,
           isHit: _currentPitchResult.isNoteHit,
@@ -709,6 +712,7 @@ debugPrint(
                             activeLyricIndexNotifier.value = centeredIndex;
                             
                             // Scroll-to-Seek: Seek audio to the time of the centered lyric
+                            // Only seek when scroll stops to avoid audio stuttering
                             final targetLyric = widget.song.lyrics[centeredIndex];
                             final targetTimeSec = targetLyric.time;
                             if (targetTimeSec >= 0) {
@@ -721,20 +725,16 @@ debugPrint(
                             _isUserScrollingLyrics = false;
                           });
                         } else if (notification is ScrollUpdateNotification) {
+                          // Throttle scroll updates: only update active lyric index during scroll
+                          // Do NOT seek during scroll to prevent audio stuttering
                           double offset = notification.metrics.pixels;
                           int centeredIndex = (offset / lyricItemHeight).round().clamp(0, widget.song.lyrics.length - 1);
                           if (centeredIndex >= 0 && centeredIndex < widget.song.lyrics.length) {
                             if (centeredIndex != _lastScrolledLyricIndex) {
                               _lastScrolledLyricIndex = centeredIndex;
                               activeLyricIndexNotifier.value = centeredIndex;
-                              
-                              // Scroll-to-Seek saat scroll berjalan: Seek audio ke waktu lirik yang di tengah
-                              final targetLyric = widget.song.lyrics[centeredIndex];
-                              final targetTimeSec = targetLyric.time;
-                              if (targetTimeSec >= 0) {
-                                _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
-                                currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
-                              }
+                              // Note: We intentionally do NOT seek here during scroll
+                              // Seek will happen in ScrollEndNotification when user stops scrolling
                             }
                           }
                         }
