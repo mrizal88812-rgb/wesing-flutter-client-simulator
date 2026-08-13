@@ -74,6 +74,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   bool _isUserScrollingLyrics = false;
   bool _wasPlayingBeforeScroll = false;
   Timer? _lyricsScrollDebounce;
+  Timer? _seekDebounce;
   int _lastScrolledLyricIndex = -1;
   double _lastUiUpdateSec = 0.0;
 
@@ -362,6 +363,8 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
     _smoothTicker.dispose();
     _positionSubscription?.cancel();
     _uiTimer?.cancel();
+    _lyricsScrollDebounce?.cancel();
+    _seekDebounce?.cancel();
     _vinylAnimationController.dispose();
     // Keep the engine alive when handing off to EditRecordingScreen (it owns
     // disposal from here); otherwise release native audio resources (mic,
@@ -703,6 +706,7 @@ debugPrint(
                         if (notification is ScrollStartNotification) {
                           _isUserScrollingLyrics = true;
                           _lyricsScrollDebounce?.cancel();
+                          _seekDebounce?.cancel();
                           // Pause playback immediately when scroll starts to prevent audio overlap
                           if (isPlayingNotifier.value && !_isCountingDown) {
                             _wasPlayingBeforeScroll = true;
@@ -714,46 +718,48 @@ debugPrint(
                           }
                         } else if (notification is ScrollEndNotification) {
                           _lyricsScrollDebounce?.cancel();
+                          _seekDebounce?.cancel();
+                          
                           double offset = notification.metrics.pixels;
                           int centeredIndex = (offset / lyricItemHeight).round().clamp(0, widget.song.lyrics.length - 1);
+                          
                           if (centeredIndex >= 0 && centeredIndex < widget.song.lyrics.length) {
                             _lastScrolledLyricIndex = centeredIndex;
                             activeLyricIndexNotifier.value = centeredIndex;
                             
-                            // Scroll-to-Seek: Seek audio to the time of the centered lyric
-                            // Only seek when scroll stops to avoid audio stuttering
                             final targetLyric = widget.song.lyrics[centeredIndex];
                             final targetTimeSec = targetLyric.time;
+                            
                             if (targetTimeSec >= 0) {
-                              // CRITICAL: Ensure we're paused before seek to prevent double playback
-                              // The pause already happened in ScrollStartNotification
-                              bool wasAlreadyPaused = !isPlayingNotifier.value;
-                              if (isPlayingNotifier.value) {
-                                _audioEngine.pause();
-                                _vinylAnimationController.stop();
-                                isPlayingNotifier.value = false;
-                              }
-                              
-                              // Perform seek while paused - this prevents buffer overlap
-                              _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
-                              currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
-                              
-                              // Resume playback if it was playing before scroll
-                              // Use a shorter delay and check state to prevent race conditions
-                              if (_wasPlayingBeforeScroll) {
-                                // Reset the flag first to prevent multiple resumes
-                                _wasPlayingBeforeScroll = false;
+                              // DEBOUNCE SEEK: Only seek after a short delay to ensure scroll has fully stopped
+                              // This prevents multiple rapid seeks during scroll settling
+                              _seekDebounce = Timer(const Duration(milliseconds: 100), () {
+                                // CRITICAL: Ensure we're paused before seek to prevent double playback
+                                bool wasAlreadyPaused = !isPlayingNotifier.value;
+                                if (isPlayingNotifier.value) {
+                                  _audioEngine.pause();
+                                  _vinylAnimationController.stop();
+                                  isPlayingNotifier.value = false;
+                                }
                                 
-                                // Small delay to ensure C++ seek is fully committed
-                                // but not too long to cause noticeable gap
-                                Future.delayed(const Duration(milliseconds: 20), () {
-                                  if (mounted && !_audioEngine.isPlaying()) {
-                                    _audioEngine.play();
-                                    _vinylAnimationController.repeat();
-                                    isPlayingNotifier.value = true;
-                                  }
-                                });
-                              }
+                                // Perform seek while paused - this prevents buffer overlap
+                                _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
+                                currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
+                                
+                                // Resume playback if it was playing before scroll
+                                if (_wasPlayingBeforeScroll) {
+                                  _wasPlayingBeforeScroll = false;
+                                  
+                                  // Small delay to ensure C++ seek is fully committed
+                                  Future.delayed(const Duration(milliseconds: 30), () {
+                                    if (mounted && !_audioEngine.isPlaying()) {
+                                      _audioEngine.play();
+                                      _vinylAnimationController.repeat();
+                                      isPlayingNotifier.value = true;
+                                    }
+                                  });
+                                }
+                              });
                             }
                           }
 
