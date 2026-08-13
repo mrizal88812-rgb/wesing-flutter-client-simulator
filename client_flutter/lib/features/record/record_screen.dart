@@ -657,30 +657,37 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
     print('[END] Recording ended at: ${recordingEndPositionSec}s, full song duration: ${fullSongDurationSec}s');
     print('[END] Vocal segments count: ${_vocalSegments.length}');
     
-    // Get vocal segments with updated metadata including recordingEndPosition
-    final List<VocalSegmentData> segmentsWithEndPos = await _audioEngine.getVocalSegments();
-    print('[END] Retrieved ${segmentsWithEndPos.length} segments from native engine');
-    
-    // If no segments have recordingEndPosition, use the global recording end position for the last segment
+    // CRITICAL FIX: Merge Flutter-side _vocalSegments with native engine segments
+    // This ensures all user singing is captured even if native engine has issues
     List<VocalSegmentData> finalSegments = [];
-    for (int i = 0; i < segmentsWithEndPos.length; i++) {
-      var seg = segmentsWithEndPos[i];
-      // For the last segment, use the recording end position if not already set
-      if (i == segmentsWithEndPos.length - 1 && seg.recordingEndPositionSec == null) {
-        finalSegments.add(VocalSegmentData(
-          songStartTimeSec: seg.songStartTimeSec,
-          songEndTimeSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : seg.songEndTimeSec,
-          durationSec: seg.durationSec,
-          recordingEndPositionSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : null,
-        ));
-      } else {
-        finalSegments.add(seg);
+    
+    // First, try to get segments from native engine
+    final List<VocalSegmentData> segmentsFromNative = await _audioEngine.getVocalSegments();
+    print('[END] Retrieved ${segmentsFromNative.length} segments from native engine');
+    
+    // If native engine returned segments, use them with corrections
+    if (segmentsFromNative.isNotEmpty) {
+      for (int i = 0; i < segmentsFromNative.length; i++) {
+        var seg = segmentsFromNative[i];
+        // For the last segment, ensure recordingEndPosition is set correctly
+        if (i == segmentsFromNative.length - 1) {
+          finalSegments.add(VocalSegmentData(
+            songStartTimeSec: seg.songStartTimeSec,
+            songEndTimeSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : seg.songEndTimeSec,
+            durationSec: seg.durationSec,
+            recordingEndPositionSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : null,
+          ));
+        } else {
+          finalSegments.add(seg);
+        }
       }
     }
     
-    if (finalSegments.isEmpty && _vocalSegments.isNotEmpty) {
-      // Fallback: Use Flutter-side segments if native engine returned none
-      print('[END] WARNING: Native engine returned no segments, using Flutter-side segments as fallback');
+    // CRITICAL: If native engine returned no segments or fewer segments than Flutter tracked,
+    // use Flutter-side _vocalSegments as the source of truth
+    if (finalSegments.isEmpty || finalSegments.length < _vocalSegments.length) {
+      print('[END] WARNING: Native engine returned ${segmentsFromNative.length} segments, but Flutter tracked ${_vocalSegments.length} segments. Using Flutter-side segments.');
+      finalSegments = [];
       for (var seg in _vocalSegments) {
         finalSegments.add(VocalSegmentData(
           songStartTimeSec: seg.songStartTimeSec,
@@ -689,6 +696,18 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
           recordingEndPositionSec: null,
         ));
       }
+      print('[END] Created ${finalSegments.length} segments from Flutter-side tracking');
+    }
+    
+    // Final validation: ensure we have at least one segment if user was recording
+    if (finalSegments.isEmpty && _recordedDuration.inMilliseconds > 0) {
+      print('[END] CRITICAL: No segments found but recording duration is ${_recordedDuration.inMilliseconds}ms. Creating fallback segment.');
+      finalSegments.add(VocalSegmentData(
+        songStartTimeSec: songStart,
+        songEndTimeSec: songEnd,
+        durationSec: (songEnd - songStart),
+        recordingEndPositionSec: recordingEndPositionSec > 0 ? recordingEndPositionSec : null,
+      ));
     }
     
     _vinylAnimationController.stop();
@@ -900,20 +919,31 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                 // User must explicitly press record button to start new segment at new position
                                 if (_wasSingingBeforeSeek && isRecordingNotifier.value && _currentSegmentStart != null) {
                                   _wasSingingBeforeSeek = false;
-                                  // Finalize the previous segment - user needs to press record to start new one
-                                  final double prevTimelinePos = currentTimeNotifier.value.inMilliseconds / 1000.0;
-                                  if (prevTimelinePos - _currentSegmentStart! > 0.5) {
+                                  
+                                  // CRITICAL FIX: Get the ACTUAL timeline position BEFORE seek happened
+                                  // The seek already updated currentTimeNotifier, so we need to calculate
+                                  // the segment end based on when scroll started, not after seek
+                                  // Use the adjusted target time as the segment end point
+                                  final double segmentEndTimeSec = adjustedTargetTimeSec;
+                                  
+                                  if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
                                     _vocalSegments.add(_VocalSegmentMetadata(
                                       songStartTimeSec: _currentSegmentStart!,
-                                      songEndTimeSec: prevTimelinePos,
-                                      recordedDuration: Duration(milliseconds: ((prevTimelinePos - _currentSegmentStart!) * 1000).round()),
+                                      songEndTimeSec: segmentEndTimeSec,
+                                      recordedDuration: Duration(milliseconds: ((segmentEndTimeSec - _currentSegmentStart!) * 1000).round()),
                                     ));
-                                    print('[SCROLL END] Finalized vocal segment: ${_currentSegmentStart}s → $prevTimelinePos (${_vocalSegments.length} total segments)');
+                                    print('[SCROLL END] Finalized vocal segment: ${_currentSegmentStart}s → $segmentEndTimeSec (${_vocalSegments.length} total segments)');
+                                  } else {
+                                    print('[SCROLL END] Segment too short (${segmentEndTimeSec - _currentSegmentStart!}s), skipping');
                                   }
+                                  
+                                  // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
+                                  // The segment is finalized, so we must stop capturing audio
+                                  _audioEngine.stopRecording();
+                                  isRecordingNotifier.value = false;
                                   _currentSegmentStart = null;
-                                  print('[SCROLL END] Cleared _currentSegmentStart, user must press record to start new segment');
-                                  // Note: We do NOT auto-resume recording here
-                                  // User must press record button to start new segment with countdown
+                                  print('[SCROLL END] Stopped recording and cleared _currentSegmentStart');
+                                  // Note: User must press record button to start new segment with countdown
                                 } else if (_wasSingingBeforeSeek) {
                                   // Reset flag even if not recording anymore
                                   _wasSingingBeforeSeek = false;
@@ -989,6 +1019,30 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                     // CRITICAL: Do NOT pause playback when user taps lyrics
                                     // User wants to hear the instrument continue while finding their place
                                     final wasPlaying = isPlayingNotifier.value;
+
+                                    // CRITICAL: If user was singing before tap, finalize the segment
+                                    // Same logic as scroll - stop recording to prevent audio loop/duplication
+                                    if (isRecordingNotifier.value && _currentSegmentStart != null) {
+                                      // Finalize the previous segment using adjusted target time as end point
+                                      final double segmentEndTimeSec = adjustedTargetTimeSec;
+                                      
+                                      if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
+                                        _vocalSegments.add(_VocalSegmentMetadata(
+                                          songStartTimeSec: _currentSegmentStart!,
+                                          songEndTimeSec: segmentEndTimeSec,
+                                          recordedDuration: Duration(milliseconds: ((segmentEndTimeSec - _currentSegmentStart!) * 1000).round()),
+                                        ));
+                                        print('[TAP] Finalized vocal segment: ${_currentSegmentStart}s → $segmentEndTimeSec (${_vocalSegments.length} total segments)');
+                                      } else {
+                                        print('[TAP] Segment too short (${segmentEndTimeSec - _currentSegmentStart!}s), skipping');
+                                      }
+                                      
+                                      // CRITICAL: Stop recording in native engine to prevent audio loop/duplication
+                                      _audioEngine.stopRecording();
+                                      isRecordingNotifier.value = false;
+                                      _currentSegmentStart = null;
+                                      print('[TAP] Stopped recording and cleared _currentSegmentStart');
+                                    }
 
                                     // CRITICAL: Store target position for countdown system
                                     // Do NOT start recording immediately - let user prepare first
