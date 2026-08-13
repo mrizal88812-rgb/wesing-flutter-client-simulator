@@ -1,4 +1,22 @@
 ```
+# Flutter/Dart specific
+**/build/
+**/ios/.symlinks
+**/android/.gradle
+**/android/gradle/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/pubspec.lock
+**/coverage/
+**/lib/generated_plugin_registrant.dart
+**/linux/flutter/ephemeral
+**/macos/Flutter/ephemeral
+**/windows/Flutter/ephemeral
 .gitignore
 # Flutter/Dart
 .dart_tool/
@@ -7,20 +25,20 @@ flutter/
 packages/
 *.g.dart
 *.freezed.dart
+*.config.dart
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Logs
-*.log
+# Temporary files
 *.tmp
+*.temp
+*.log
+.DS_Store
+Thumbs.db
 
-# Environment
+# Environment variables
 .env
 .env.local
+*.env
+```
 *.env.*
 
 # Dependencies
