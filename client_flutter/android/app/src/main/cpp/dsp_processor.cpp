@@ -28,21 +28,62 @@ void DspProcessor::loadInstrumental(const float *pcmData, size_t numSamples) {
 }
 
 void DspProcessor::startRecording() {
-  vocalRecording.clear();
-  vocalRecording.reserve(sampleRate * 60 * 5); // 5 mins reserve
-  playbackFrame.store(0);
-  recordingStartFrame = 0;
+  // When starting a NEW recording session, clear everything
+  if (vocalRecording.empty()) {
+    vocalRecording.clear();
+    vocalRecording.reserve(sampleRate * 60 * 5); // 5 mins reserve
+    vocalSegments.clear();
+    playbackFrame.store(0);
+    recordingStartFrame = 0;
+    currentSegmentStartFrame = 0;
+  } else {
+    // Continuing after a seek - start a new segment
+    // Save the buffer position where this new segment will start
+    currentSegmentStartFrame = vocalRecording.size();
+    LOGD("[AUDIO] startRecording() continuing after seek, new segment starts at buffer frame %zu, song position %.3f s",
+         currentSegmentStartFrame, getPlaybackPosition());
+  }
   isRecording.store(true);
   isPlaying.store(true);
-  LOGD("[AUDIO] startRecording() invoked, playbackFrame=0, instrumental "
-       "samples=%zu",
-       instrumentalBuffer.size());
+  LOGD("[AUDIO] startRecording() invoked, playbackFrame=%zu, instrumental samples=%zu",
+       playbackFrame.load(), instrumentalBuffer.size());
 }
 
 void DspProcessor::stopRecording() {
+  if (isRecording.load()) {
+    // Finalize the current segment before stopping
+    finalizeRecordingSegment();
+  }
   isRecording.store(false);
   isPlaying.store(false);
-  LOGD("[AUDIO] stopRecording() invoked");
+  LOGD("[AUDIO] stopRecording() invoked, total segments=%zu", vocalSegments.size());
+}
+
+void DspProcessor::finalizeRecordingSegment() {
+  if (!isRecording.load() || vocalRecording.empty()) {
+    return;
+  }
+  
+  size_t currentBufferPos = vocalRecording.size();
+  size_t framesInThisSegment = currentBufferPos - currentSegmentStartFrame;
+  size_t currentSongFrame = playbackFrame.load();
+  
+  if (framesInThisSegment > 0) {
+    VocalSegment segment(
+      currentSegmentStartFrame,           // Where in buffer this segment starts
+      framesInThisSegment,                // How many frames recorded
+      recordingStartFrame,                // Song position where recording started
+      currentSongFrame                    // Song position where recording stopped
+    );
+    vocalSegments.push_back(segment);
+    
+    LOGD("[AUDIO] finalizeRecordingSegment: segment #%zu bufferStart=%zu frames=%zu songStart=%zu (%.3f s) songEnd=%zu (%.3f s)",
+         vocalSegments.size(),
+         segment.startFrameInBuffer,
+         segment.numFrames,
+         segment.songStartFrame, static_cast<float>(segment.songStartFrame) / sampleRate,
+         segment.songEndFrame, static_cast<float>(segment.songEndFrame) / sampleRate);
+  }
 }
 
 void DspProcessor::play() {
@@ -86,46 +127,40 @@ void DspProcessor::seek(float positionSeconds) {
   
   // Store old playback frame for vocal sync calculation
   size_t oldPlaybackFrame = playbackFrame.load(std::memory_order_relaxed);
+  
+  // CRITICAL: When seeking during recording, finalize the current segment first
+  // This ensures each recorded segment has its correct timeline position
+  if (isCurrentlyRecording && wasPlaying && !vocalRecording.empty()) {
+    finalizeRecordingSegment();
+    // Reset for new segment - will be set in startRecording() when called again
+    currentSegmentStartFrame = vocalRecording.size();
+  }
+  
   playbackFrame.store(frame, std::memory_order_release);
 
-  // CRITICAL FIX FOR KARAOKE VOCAL SYNC:
-  // When seeking during recording or playback with recorded vocals,
-  // we must adjust recordingStartFrame so that the already-recorded 
-  // vocal samples remain synchronized with the new playback position.
-  // 
+  // KARAOKE MULTI-SEGMENT RECORDING SYSTEM:
   // Master Timeline Concept:
-  // - All audio (instrumental + vocal) and lyrics reference the same timeline
-  // - When user seeks to time T, both instrumental and vocal must jump to T
-  // - Vocal recording starts at frame 0 in vocalRecording buffer
-  // - recordingStartFrame tells us which instrumental frame aligns with vocal frame 0
-  //
-  // Formula: recordingStartFrame = newPlaybackFrame - framesRecordedSoFar
-  // This ensures vocal stays aligned with the music after seek.
+  // - All audio (instrumental + vocal segments) and lyrics reference the same timeline
+  // - Each vocal segment stores its absolute song position (songStartFrame to songEndFrame)
+  // - When seeking, we don't need to adjust recordingStartFrame for old segments
+  //   because they already have their absolute positions stored
+  // - recordingStartFrame is only used for the CURRENT active recording segment
   
-  if (isCurrentlyRecording && wasPlaying && !vocalRecording.empty()) {
-    // During recording: vocalRecording contains samples from frame 0 to current
-    // We need to shift recordingStartFrame so vocal aligns with new position
-    size_t framesRecorded = vocalRecording.size();
+  if (isCurrentlyRecording && wasPlaying) {
+    // Starting a new segment at the new position
+    // recordingStartFrame will be set to the new playback position
+    // so that any new vocal recorded here aligns correctly
+    recordingStartFrame = frame;
     
-    // The vocal that was recorded starting at oldPlaybackFrame should now
-    // start at the new frame position
-    if (frame >= framesRecorded) {
-      recordingStartFrame = frame - framesRecorded;
-    } else {
-      // Edge case: seek to very beginning
-      recordingStartFrame = 0;
-    }
-    
-    LOGD("[AUDIO] seek() during recording: oldFrame=%zu newFrame=%zu framesRecorded=%zu adjusted recordingStartFrame=%zu",
-         oldPlaybackFrame, frame, framesRecorded, recordingStartFrame);
-  } else if (!isCurrentlyRecording && wasPlaying && !vocalRecording.empty()) {
-    // During playback of recorded vocal (not actively recording):
-    // Keep vocal synchronized by maintaining the offset relationship
-    // recordingStartFrame should stay constant unless we're re-recording
-    // This preserves the original alignment from when recording stopped
-    
-    LOGD("[AUDIO] seek() during playback: oldFrame=%zu newFrame=%zu recordingStartFrame=%zu (unchanged)",
+    LOGD("[AUDIO] seek() during recording: finalized previous segment, oldFrame=%zu newFrame=%zu new recordingStartFrame=%zu",
          oldPlaybackFrame, frame, recordingStartFrame);
+  } else if (!isCurrentlyRecording && wasPlaying && !vocalSegments.empty()) {
+    // During playback with recorded segments:
+    // No need to adjust anything - segments have absolute positions
+    // The playback logic will place each segment at its correct timeline position
+    
+    LOGD("[AUDIO] seek() during playback: oldFrame=%zu newFrame=%zu segments count=%zu",
+         oldPlaybackFrame, frame, vocalSegments.size());
   }
 
   LOGD("[AUDIO] seek() position=%.3f s frame=%zu isRecording=%d wasPlaying=%d",
@@ -232,7 +267,7 @@ void DspProcessor::processOutputRealtime(float *outBuffer, int numFrames) {
          playing ? 1 : 0, recording ? 1 : 0, pFrame,
          static_cast<float>(pFrame) / sampleRate);
   }
-  // 1. Gather vocal samples (either from mic or from recorded buffer)
+  // 1. Gather vocal samples (either from mic or from recorded segments)
   for (int i = 0; i < numFrames; i++) {
     float vSample = 0.0f;
     if (recording) {
@@ -241,7 +276,26 @@ void DspProcessor::processOutputRealtime(float *outBuffer, int numFrames) {
       } else {
         vSample = 0.0f;
       }
-    } else if (playing) {
+    } else if (playing && !vocalSegments.empty()) {
+      // MULTI-SEGMENT PLAYBACK: Find which segment (if any) should play at this timeline position
+      size_t currentSongFrame = pFrame + i;
+      
+      for (const auto& segment : vocalSegments) {
+        // Check if current timeline position falls within this segment's range
+        if (currentSongFrame >= segment.songStartFrame && 
+            currentSongFrame < segment.songEndFrame) {
+          // Calculate which frame in the buffer to read from
+          size_t offsetInSegment = currentSongFrame - segment.songStartFrame;
+          size_t bufferIndex = segment.startFrameInBuffer + offsetInSegment;
+          
+          if (bufferIndex < vocalRecording.size()) {
+            vSample = vocalRecording[bufferIndex];
+          }
+          break; // Found the segment, no need to check others
+        }
+      }
+    } else if (playing && vocalRecording.empty() == false) {
+      // Fallback to old behavior for single-segment recordings (backward compatibility)
       long long idx = static_cast<long long>(pFrame) + i +
                       latencyOffsetFrames.load(std::memory_order_relaxed);
       if (idx >= 0 && static_cast<size_t>(idx) < vocalRecording.size()) {
@@ -582,43 +636,91 @@ void writeWavHeader(std::ofstream &file, int sampleRate, int channels,
 bool DspProcessor::exportMix(float vocalVolDb, float instVolDb,
                              const std::string &outPath) {
   exportProgress.store(0.0f);
-  if (vocalRecording.empty())
+  
+  // MULTI-SEGMENT EXPORT: Calculate total song duration needed
+  size_t songEndFrame = 0;
+  if (!vocalSegments.empty()) {
+    // Find the end position of the last segment
+    for (const auto& seg : vocalSegments) {
+      if (seg.songEndFrame > songEndFrame) {
+        songEndFrame = seg.songEndFrame;
+      }
+    }
+  } else if (!vocalRecording.empty()) {
+    // Fallback to old behavior for single-segment recordings
+    songEndFrame = recordingStartFrame + vocalRecording.size();
+  }
+  
+  if (songEndFrame == 0 || instrumentalBuffer.empty()) {
     return false;
-
-  size_t outFrames = vocalRecording.size();
+  }
+  
+  // Export buffer size = full song timeline from first vocal segment start to last end
+  size_t outFrames = songEndFrame;
   std::vector<float> mixBuffer(outFrames, 0.0f);
-
-  // Process Vocal Track first with DSP
-  std::copy(vocalRecording.begin(), vocalRecording.end(), mixBuffer.begin());
+  
   exportProgress.store(0.1f);
-  // Apply offline DSP block by block to not exhaust memory if file is huge
+  
+  // MULTI-SEGMENT VOCAL PLACEMENT: Place each vocal segment at its absolute timeline position
+  int latencyFrames = latencyOffsetFrames.load(std::memory_order_relaxed);
+  float vVol = vocalVol.load();
+  
+  for (const auto& segment : vocalSegments) {
+    // For each frame in this segment
+    for (size_t segFrame = 0; segFrame < segment.numFrames; segFrame++) {
+      size_t bufferIndex = segment.startFrameInBuffer + segFrame;
+      size_t songPosition = segment.songStartFrame + segFrame;
+      
+      if (bufferIndex < vocalRecording.size() && songPosition < outFrames) {
+        mixBuffer[songPosition] = vocalRecording[bufferIndex] * vVol;
+      }
+    }
+  }
+  
+  // If no segments but has old-style recording (backward compatibility)
+  if (vocalSegments.empty() && !vocalRecording.empty()) {
+    std::copy(vocalRecording.begin(), vocalRecording.end(), mixBuffer.begin());
+    for (size_t i = 0; i < vocalRecording.size(); i++) {
+      mixBuffer[i] *= vVol;
+    }
+  }
+  
+  exportProgress.store(0.3f);
+  
+  // Apply offline DSP block by block to the entire mix buffer (vocal portions only)
   int blockSize = 4096;
   for (size_t i = 0; i < outFrames; i += blockSize) {
     int frames = std::min(blockSize, static_cast<int>(outFrames - i));
     float *ptr = mixBuffer.data() + i;
-
-    applyPitchCorrection(ptr, frames);
-    applyEq(ptr, frames);
-    applyCompressor(ptr, frames);
-    applyDelay(ptr, frames);
-    applyReverb(ptr, frames);
+    
+    // Only apply DSP where there's vocal content (non-zero samples)
+    bool hasVocal = false;
+    for (int j = 0; j < frames; j++) {
+      if (std::abs(ptr[j]) > 0.001f) {
+        hasVocal = true;
+        break;
+      }
+    }
+    
+    if (hasVocal) {
+      applyPitchCorrection(ptr, frames);
+      applyEq(ptr, frames);
+      applyCompressor(ptr, frames);
+      applyDelay(ptr, frames);
+      applyReverb(ptr, frames);
+    }
+    
     if (i % (blockSize * 20) == 0)
-      exportProgress.store(0.1f + 0.6f * (static_cast<float>(i) / outFrames));
+      exportProgress.store(0.3f + 0.4f * (static_cast<float>(i) / outFrames));
   }
 
   exportProgress.store(0.7f);
-  float vVol = vocalVol.load();
   float iVol = instVol.load();
-
-  // Mix with Instrumental starting from recordingStartFrame and limit.
-  // mixBuffer[i] currently holds the DSP-processed vocal sample that was
-  // captured at vocalRecording[i]; align it with the instrumental sample
-  // using the same latency compensation applied during live playback.
-  int latencyFrames = latencyOffsetFrames.load(std::memory_order_relaxed);
+  
+  // Mix with Instrumental - place instrumental at correct positions
   for (size_t i = 0; i < outFrames; i++) {
-    float v = mixBuffer[i] * vVol;
-    long long instIdx =
-        static_cast<long long>(recordingStartFrame) + i + latencyFrames;
+    float v = mixBuffer[i]; // Already has vocal processed
+    long long instIdx = static_cast<long long>(i);
     float instr = (instIdx >= 0 &&
                     static_cast<size_t>(instIdx) < instrumentalBuffer.size())
                       ? (instrumentalBuffer[static_cast<size_t>(instIdx)] * iVol)

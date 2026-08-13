@@ -12,6 +12,18 @@
 
 enum class AutoTuneMode { OFF = 0, NATURAL = 1, STRONG = 2 };
 
+// Structure to track individual vocal segments with their absolute timeline positions
+struct VocalSegment {
+  size_t startFrameInBuffer;    // Where in vocalRecording buffer this segment starts
+  size_t numFrames;             // Duration of this segment in frames
+  size_t songStartFrame;        // Absolute position in song timeline where recording started
+  size_t songEndFrame;          // Absolute position in song timeline where recording ended
+  
+  VocalSegment() : startFrameInBuffer(0), numFrames(0), songStartFrame(0), songEndFrame(0) {}
+  VocalSegment(size_t bufStart, size_t frames, size_t songStart, size_t songEnd)
+    : startFrameInBuffer(bufStart), numFrames(frames), songStartFrame(songStart), songEndFrame(songEnd) {}
+};
+
 struct BiquadFilter {
   float b0{1.0f}, b1{0.0f}, b2{0.0f}, a1{0.0f}, a2{0.0f};
   float z1{0.0f}, z2{0.0f};
@@ -48,6 +60,7 @@ public:
   void loadInstrumental(const float *pcmData, size_t numSamples);
   void startRecording();
   void stopRecording();
+  void finalizeRecordingSegment();  // Save current recording segment with timeline position
   void play();
   void pause();
   void seek(float positionSeconds);
@@ -86,7 +99,9 @@ private:
   // Playback state
   std::vector<float> instrumentalBuffer;
   std::vector<float> vocalRecording;
+  std::vector<VocalSegment> vocalSegments;  // Track multiple vocal segments with absolute timeline positions
   size_t recordingStartFrame{0};
+  size_t currentSegmentStartFrame{0};  // Buffer position where current recording segment started
   std::atomic<bool> isPlaying{false};
   std::atomic<bool> isRecording{false};
   std::atomic<size_t> playbackFrame{0};
