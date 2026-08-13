@@ -84,22 +84,52 @@ void DspProcessor::seek(float positionSeconds) {
   bool wasPlaying = isPlaying.load(std::memory_order_relaxed);
   bool isCurrentlyRecording = isRecording.load(std::memory_order_relaxed);
   
+  // Store old playback frame for vocal sync calculation
+  size_t oldPlaybackFrame = playbackFrame.load(std::memory_order_relaxed);
   playbackFrame.store(frame, std::memory_order_release);
 
   // CRITICAL FIX FOR KARAOKE VOCAL SYNC:
-  // When seeking during recording, we must adjust recordingStartFrame so that
-  // the already-recorded vocal samples remain synchronized with the new playback position.
-  // Without this, the vocal would play from the wrong position after seek, causing drift.
-  if (isCurrentlyRecording && wasPlaying) {
-    // recordingStartFrame should match the new playbackFrame to maintain sync
-    // The vocal recorded so far starts at frame 0 of vocalRecording, and should
-    // align with the new playback position.
-    recordingStartFrame = frame;
-    LOGD("[AUDIO] seek() during recording: adjusted recordingStartFrame=%zu", recordingStartFrame);
+  // When seeking during recording or playback with recorded vocals,
+  // we must adjust recordingStartFrame so that the already-recorded 
+  // vocal samples remain synchronized with the new playback position.
+  // 
+  // Master Timeline Concept:
+  // - All audio (instrumental + vocal) and lyrics reference the same timeline
+  // - When user seeks to time T, both instrumental and vocal must jump to T
+  // - Vocal recording starts at frame 0 in vocalRecording buffer
+  // - recordingStartFrame tells us which instrumental frame aligns with vocal frame 0
+  //
+  // Formula: recordingStartFrame = newPlaybackFrame - framesRecordedSoFar
+  // This ensures vocal stays aligned with the music after seek.
+  
+  if (isCurrentlyRecording && wasPlaying && !vocalRecording.empty()) {
+    // During recording: vocalRecording contains samples from frame 0 to current
+    // We need to shift recordingStartFrame so vocal aligns with new position
+    size_t framesRecorded = vocalRecording.size();
+    
+    // The vocal that was recorded starting at oldPlaybackFrame should now
+    // start at the new frame position
+    if (frame >= framesRecorded) {
+      recordingStartFrame = frame - framesRecorded;
+    } else {
+      // Edge case: seek to very beginning
+      recordingStartFrame = 0;
+    }
+    
+    LOGD("[AUDIO] seek() during recording: oldFrame=%zu newFrame=%zu framesRecorded=%zu adjusted recordingStartFrame=%zu",
+         oldPlaybackFrame, frame, framesRecorded, recordingStartFrame);
+  } else if (!isCurrentlyRecording && wasPlaying && !vocalRecording.empty()) {
+    // During playback of recorded vocal (not actively recording):
+    // Keep vocal synchronized by maintaining the offset relationship
+    // recordingStartFrame should stay constant unless we're re-recording
+    // This preserves the original alignment from when recording stopped
+    
+    LOGD("[AUDIO] seek() during playback: oldFrame=%zu newFrame=%zu recordingStartFrame=%zu (unchanged)",
+         oldPlaybackFrame, frame, recordingStartFrame);
   }
 
-  LOGD("[AUDIO] seek() position=%.3f s frame=%zu",
-       static_cast<float>(frame) / sampleRate, frame);
+  LOGD("[AUDIO] seek() position=%.3f s frame=%zu isRecording=%d wasPlaying=%d",
+       static_cast<float>(frame) / sampleRate, frame, isCurrentlyRecording ? 1 : 0, wasPlaying ? 1 : 0);
 }
 
 float DspProcessor::getPlaybackPosition() const {
