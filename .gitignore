@@ -1,35 +1,40 @@
 ```
-# Flutter/Dart specific
-**/build/
-**/ios/.symlinks
-**/android/.gradle
-**/android/gradle/
-**/android/gradlew
-**/android/gradlew.bat
-**/android/local.properties
-**/.dart_tool/
-**/.flutter-plugins
-**/.flutter-plugins-dependencies
-**/.packages
-**/pubspec.lock
-**/coverage/
-**/lib/generated_plugin_registrant.dart
-**/linux/flutter/ephemeral
-**/macos/Flutter/ephemeral
-**/windows/Flutter/ephemeral
-*.g.dart
-*.freezed.dart
-*.config.dart
+# Flutter/Dart specific ignores
+.dart_tool/
+.build/
+packages/
+*.iws
+*.log
+*.lock
+coverage/
+flutter_*.png
+**/doc/api/
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Logs
+*.log
 
 # Temporary files
 *.tmp
-*.temp
-*.log
 .DS_Store
 Thumbs.db
 
-# Environment variables
-.env
-.env.local
-*.env
+# Dependencies
+node_modules/
+vendor/
+pubspec.lock
+
+# Build outputs
+build/
+dist/
 ```
