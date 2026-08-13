@@ -144,11 +144,14 @@ void DspProcessor::seek(float positionSeconds) {
   // CRITICAL FOR PREVENTING DOUBLE PLAYBACK:
   // Pause the playback flag BEFORE changing playbackFrame to prevent the audio callback
   // from reading stale data while we're seeking. This prevents buffer overlap.
+  // NOTE: We do NOT use usleep() here because it can cause audio stuttering.
+  // The atomic store with memory_order_release ensures proper synchronization
+  // without blocking. The audio callback will see the paused state on its next iteration.
   if (wasPlaying) {
     isPlaying.store(false, std::memory_order_release);
-    // Small delay to ensure the audio callback sees the paused state
-    // This is critical for preventing the "tuk-tuk" double playback issue
-    usleep(1000); // 1ms delay
+    // No delay needed - the atomic operation with release semantics ensures
+    // the audio callback will see this change on its next check.
+    // Adding a delay here causes audio stuttering and buffer underruns.
   }
 
   // Now safe to change playback position while paused
@@ -180,9 +183,11 @@ void DspProcessor::seek(float positionSeconds) {
   }
 
   // CRITICAL: Resume playback ONLY after seek is complete
-  // This prevents the audio callback from reading mixed old/new buffer positions
+  // We do NOT use usleep() here either. The atomic operations ensure proper ordering.
+  // The audio callback will naturally pick up the new position on its next iteration.
   if (shouldResumeAfterSeek) {
-    usleep(500); // Another small delay to ensure seek is fully committed
+    // No delay needed - atomic operations with proper memory ordering
+    // ensure the audio callback sees the updated playbackFrame before isPlaying=true
     isPlaying.store(true, std::memory_order_release);
     LOGD("[AUDIO] seek() resumed playback at new position %.3f s", static_cast<float>(frame) / sampleRate);
   }
