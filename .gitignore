@@ -1,76 +1,44 @@
 ```
-# Compiled and build artifacts
-*.pyc
-__pycache__/
-*.o
-*.obj
-*.class
-*.exe
-*.dll
-*.so
-*.a
-*.out
+# Flutter/Dart build artifacts
+/build/
+/ios/.symlinks/
+/android/.gradle/
+.android/
+.flutter-plugins
+.flutter-plugin-dependencies
+.local.properties
+/ios/Flutter/.last_build_id
+/ios/Pods/
+/ios/Podfile.lock
+**/xcuserdata/
+*.gpx
+*.lproj/
+DerivedData/
 
-# Dependencies
-node_modules/
-venv/
-.venv/
-.env
-.env.local
-.env.*
-
-# Build directories
-dist/
-build/
-target/
-.gradle/
-
-# Python specific
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
-.PyCharmCache/
-.mypy_cache/
-.pytest_cache/
-.coverage
-coverage/
-htmlcov/
-
-# Dart/Flutter specific
+# Dart tooling
 .dart_tool/
 .packages
-*.dart.js
-*.part.js
-*.g.part
-*.freezed.dart
-*.g.dart
-*.gen.dart
-lib/generated/
-build/
-.flutter-plugins
-.flutter-plugins-dependencies
-.local_properties
-appbundle/
-ios/.symlinks/
-android/.gradle/
-android/app/build/
-android/build/
-android/*/build/
+.pub/
+pubspec.lock
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-*.swo
-
-# Editors
+# IDE files
 .vscode/
 .idea/
+*.iml
+*.ipr
+*.iws
 *.swp
 *.swo
+*.tmp
+
+# Logs
+*.log
+**/logs/
+
+# Environment variables
+.env
+.env.local
+*.env.*
 
 # OS generated files
 .DS_Store
