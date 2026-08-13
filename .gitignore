@@ -1,72 +1,50 @@
-# Flutter/Dart
-.dart_tool/
-.build/
-.packages
-flutter_export_environment.sh
+```
+# Compiled and build artifacts
+*.pyc
+__pycache__/
+*.o
+*.obj
+dist/
+build/
+target/
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
+# Dependencies
+.venv/
+venv/
+node_modules/
+.julia/
+.zig/
 
-# Logs
+# Logs and temp files
 *.log
 *.tmp
+*.swp
+*.swo
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Dependencies
-node_modules/
-vendor/
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Build outputs
-build/
-dist/
-target/
+# System files
+.DS_Store
+Thumbs.db
 
-# Python (if applicable)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
+# Coverage
+coverage/
+htmlcov/
 .coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git/modules/
-.gitattributes
-.gitignore
-.pytest_cache/
-.mypy_cache/
 
-# Compiled and binary
-*.class
-*.o
-*.obj
-*.out
-*.exe
-*.dll
-*.so
-*.a
-*.jar
-*.war
+# Compressed files
 *.zip
-*.tar
 *.gz
+*.tar
 *.tgz
 *.bz2
 *.xz
@@ -86,26 +64,4 @@ coverage.xml
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-
-# OS
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Icon?
-desktop.ini
-
-# Coverage
-coverage/
-htmlcov/
-.coverage*
-
-# Gradle
-.gradle/
-build/
-
-# Julia
-julia-*/
-
-# Zig
-zig*/
-/storage/songs
+```

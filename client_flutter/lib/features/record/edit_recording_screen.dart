@@ -182,10 +182,12 @@ class _EditRecordingScreenState extends State<EditRecordingScreen> with SingleTi
 
       if (posSec >= endSec) {
         // Loop back to start
-        _audioEngine.seek(Duration(milliseconds: (widget.songStart * 1000).round()));
+        final int startMs = (widget.songStart * 1000).round();
+        _audioEngine.seek(Duration(milliseconds: startMs));
         _vinylAnimationController.repeat();
         setState(() {
           isPlaying = true;
+          // Reset relative time to zero for UI consistency
           _currentTime = Duration.zero;
         });
         return;
