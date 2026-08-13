@@ -46,3 +46,5 @@ Thumbs.db
 ```
 /client_flutter/build
 /node_modules
+/client_flutter/android/.gradle
+/client_flutter/android/.gradle
