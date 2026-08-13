@@ -71,3 +71,11 @@ target/
 *.lz
 *.lzo
 ```
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
+```
+/node_modules
+/client_flutter/android/.gradle
+/client_flutter/android/.gradle
