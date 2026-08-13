@@ -727,6 +727,14 @@ debugPrint(
                             if (centeredIndex != _lastScrolledLyricIndex) {
                               _lastScrolledLyricIndex = centeredIndex;
                               activeLyricIndexNotifier.value = centeredIndex;
+                              
+                              // Scroll-to-Seek saat scroll berjalan: Seek audio ke waktu lirik yang di tengah
+                              final targetLyric = widget.song.lyrics[centeredIndex];
+                              final targetTimeSec = targetLyric.time;
+                              if (targetTimeSec >= 0) {
+                                _audioEngine.seek(Duration(milliseconds: (targetTimeSec * 1000).toInt()));
+                                currentTimeNotifier.value = Duration(milliseconds: (targetTimeSec * 1000).toInt());
+                              }
                             }
                           }
                         }
