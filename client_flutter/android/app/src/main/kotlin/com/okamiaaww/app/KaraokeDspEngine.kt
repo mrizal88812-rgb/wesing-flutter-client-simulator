@@ -104,12 +104,12 @@ private var pitchTickerStarted = false
     init {
         System.loadLibrary("karaoke_dsp")
         
-        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.karaoke/dsp_engine")
+        val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.okamiaaww.app/KaraokeDspEngine")
         channel.setMethodCallHandler(this)
         
       EventChannel(
     flutterEngine.dartExecutor.binaryMessenger,
-    "com.example.karaoke/dsp_position"
+    "com.okamiaaww.app/KaraokeDspPosition"
 ).setStreamHandler(object : EventChannel.StreamHandler {
 
     override fun onListen(
@@ -140,7 +140,7 @@ private var pitchTickerStarted = false
     }
 })
             
-        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.example.karaoke/dsp_pitch")
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "com.okamiaaww.app/KaraokeDspPitch")
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                     android.util.Log.d("KaraokeDspEngine", "pitch onListen")
