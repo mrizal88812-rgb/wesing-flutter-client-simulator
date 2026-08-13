@@ -8,14 +8,14 @@ KaraokeAudioEngine createPlatformAudioEngine() {
 }
 
 class NativeKaraokeAudioEngine implements KaraokeAudioEngine {
- static const MethodChannel _channel =
-      MethodChannel('com.example.karaoke/dsp_engine');
+  static const MethodChannel _channel =
+      MethodChannel('com.okamiaaww.app/KaraokeDspEngine');
 
   static const EventChannel _positionChannel =
-      EventChannel('com.example.karaoke/dsp_position');
+      EventChannel('com.okamiaaww.app/KaraokeDspPosition');
 
   static const EventChannel _pitchChannel =
-      EventChannel('com.example.karaoke/dsp_pitch');
+      EventChannel('com.okamiaaww.app/KaraokeDspPitch');
 
   // --------------------------------------------------------------------
   // App-wide singleton raw platform subscriptions.
