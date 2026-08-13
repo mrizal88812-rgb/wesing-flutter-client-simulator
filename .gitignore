@@ -68,3 +68,9 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 ```
+# OS generated files
+.DS_Store
+Thumbs.db
+```
+/client_flutter/build
+/node_modules
