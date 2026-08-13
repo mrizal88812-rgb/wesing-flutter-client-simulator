@@ -1,27 +1,22 @@
 ```
-# Flutter/Dart build artifacts
-**/build/
-**/ios/Flutter/.last_build_id
-**/linux/flutter/ephemeral
-**/macos/Flutter/ephemeral
-**/windows/Flutter/ephemeral
+# Gradle
+.gradle/
 
-# Dart tooling
+# Flutter/Dart
 .dart_tool/
-.packages
+.flutter-plugins
+.flutter-plugin-dependencies
+.ios/
+android/.gradle/
+build/
+**/build/
+*.g.dart
 
-# IDE files
+# IDE
 .vscode/
 .idea/
-*.iml
-*.ipr
-*.iws
-
-# Temp files
-*.tmp
-*.temp
 *.swp
-*~
+*.swo
 
 # Logs
 *.log
@@ -31,20 +26,26 @@
 .env.local
 *.env.*
 
-# Dependency cache
-.pub/
-.dart_tool/package_config.lock
+# Dependencies
+node_modules/
+vendor/
 
-# macOS
+# OS generated files
 .DS_Store
-
-# Windows
 Thumbs.db
-```
-# Compressed files
+
+# Build outputs
+*.apk
+*.aab
+*.so
+*.dylib
+*.dll
+*.exe
+*.jar
+*.war
 *.zip
-*.gz
 *.tar
+*.gz
 *.tgz
 *.bz2
 *.xz
@@ -64,5 +65,6 @@ Thumbs.db
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+```
 /node_modules
 /client_flutter/android/.gradle
