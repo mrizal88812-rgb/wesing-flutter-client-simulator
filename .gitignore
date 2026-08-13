@@ -1,51 +1,14 @@
 ```
 # Build artifacts
-*.o
-*.obj
-*.so
-*.a
-*.dylib
-*.dll
-*.exe
-*.out
-
-# Android specific
-*.apk
-*.aar
-*.dex
-*.jar
-
-# C/C++ build
-obj/
-*.i
-*.ii
-*.s
-*.su
-*.s~
-*.c~
-*.h~
-
-# Temporary files
-*.tmp
-*.temp
-*.swp
-*~
-
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-.env.*
-
+build/
 # Dependencies
 node_modules/
-vendor/
-
-# IDE
+# Editors
 .vscode/
 .idea/
+# Logs and temp files
+*.log
+*.tmp
 *.swp
 *.swo
 

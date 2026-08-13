@@ -124,10 +124,14 @@ void DspProcessor::seek(float positionSeconds) {
 
   bool wasPlaying = isPlaying.load(std::memory_order_relaxed);
   bool isCurrentlyRecording = isRecording.load(std::memory_order_relaxed);
-  
+
+  // CRITICAL: Store state BEFORE pausing for seek
+  // We need to know if it WAS playing before we pause it
+  bool shouldResumeAfterSeek = wasPlaying;
+
   // Store old playback frame for vocal sync calculation
   size_t oldPlaybackFrame = playbackFrame.load(std::memory_order_relaxed);
-  
+
   // CRITICAL: When seeking during recording, finalize the current segment first
   // This ensures each recorded segment has its correct timeline position
   if (isCurrentlyRecording && wasPlaying && !vocalRecording.empty()) {
@@ -135,7 +139,18 @@ void DspProcessor::seek(float positionSeconds) {
     // Reset for new segment - will be set in startRecording() when called again
     currentSegmentStartFrame = vocalRecording.size();
   }
-  
+
+  // CRITICAL FOR PREVENTING DOUBLE PLAYBACK:
+  // Pause the playback flag BEFORE changing playbackFrame to prevent the audio callback
+  // from reading stale data while we're seeking. This prevents buffer overlap.
+  if (wasPlaying) {
+    isPlaying.store(false, std::memory_order_release);
+    // Small delay to ensure the audio callback sees the paused state
+    // This is critical for preventing the "tuk-tuk" double playback issue
+    usleep(1000); // 1ms delay
+  }
+
+  // Now safe to change playback position while paused
   playbackFrame.store(frame, std::memory_order_release);
 
   // KARAOKE MULTI-SEGMENT RECORDING SYSTEM:
@@ -145,22 +160,30 @@ void DspProcessor::seek(float positionSeconds) {
   // - When seeking, we don't need to adjust recordingStartFrame for old segments
   //   because they already have their absolute positions stored
   // - recordingStartFrame is only used for the CURRENT active recording segment
-  
+
   if (isCurrentlyRecording && wasPlaying) {
     // Starting a new segment at the new position
     // recordingStartFrame will be set to the new playback position
     // so that any new vocal recorded here aligns correctly
     recordingStartFrame = frame;
-    
+
     LOGD("[AUDIO] seek() during recording: finalized previous segment, oldFrame=%zu newFrame=%zu new recordingStartFrame=%zu",
          oldPlaybackFrame, frame, recordingStartFrame);
   } else if (!isCurrentlyRecording && wasPlaying && !vocalSegments.empty()) {
     // During playback with recorded segments:
     // No need to adjust anything - segments have absolute positions
     // The playback logic will place each segment at its correct timeline position
-    
+
     LOGD("[AUDIO] seek() during playback: oldFrame=%zu newFrame=%zu segments count=%zu",
          oldPlaybackFrame, frame, vocalSegments.size());
+  }
+
+  // CRITICAL: Resume playback ONLY after seek is complete
+  // This prevents the audio callback from reading mixed old/new buffer positions
+  if (shouldResumeAfterSeek) {
+    usleep(500); // Another small delay to ensure seek is fully committed
+    isPlaying.store(true, std::memory_order_release);
+    LOGD("[AUDIO] seek() resumed playback at new position %.3f s", static_cast<float>(frame) / sampleRate);
   }
 
   LOGD("[AUDIO] seek() position=%.3f s frame=%zu isRecording=%d wasPlaying=%d",
