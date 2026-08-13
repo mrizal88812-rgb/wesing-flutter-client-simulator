@@ -70,10 +70,14 @@ void DspProcessor::finalizeRecordingSegment() {
   size_t currentSongFrame = playbackFrame.load();
   
   if (framesInThisSegment > 0) {
+    // CRITICAL FIX: Use currentSegmentStartFrame for buffer start, 
+    // and calculate song position correctly
+    size_t songStartFrame = currentSongFrame - framesInThisSegment;
+    
     VocalSegment segment(
       currentSegmentStartFrame,           // Where in buffer this segment starts
       framesInThisSegment,                // How many frames recorded
-      recordingStartFrame,                // Song position where recording started
+      songStartFrame,                     // Song position where recording actually started
       currentSongFrame                    // Song position where recording stopped
     );
     vocalSegments.push_back(segment);

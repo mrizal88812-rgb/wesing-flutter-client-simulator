@@ -1,22 +1,32 @@
 ```
-# Flutter/Dart specific ignores
-.dart_tool/
-.build/
-packages/
-*.iws
-*.log
-*.lock
-coverage/
-flutter_*.png
-**/doc/api/
+# Build artifacts
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.out
 
-# IDE specific
-.idea/
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
+
+# Editors
 .vscode/
+.idea/
 *.swp
 *.swo
 
-# Environment
+# System files
+.DS_Store
+Thumbs.db
 .env
 .env.local
 *.env.*
@@ -24,17 +34,32 @@ flutter_*.png
 # Logs
 *.log
 
-# Temporary files
-*.tmp
-.DS_Store
-Thumbs.db
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# Dependencies
-node_modules/
-vendor/
-pubspec.lock
-
-# Build outputs
-build/
-dist/
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```

@@ -92,6 +92,8 @@ public:
   float getCurrentPitch() const { return currentPitch.load(); }
   float getConfidence() const { return pitchConfidence.load(); }
   float getExportProgress() const { return exportProgress.load(); }
+  size_t getVocalSegmentsCount() const { return vocalSegments.size(); }
+  const std::vector<VocalSegment>& getVocalSegments() const { return vocalSegments; }
 
 private:
   int sampleRate;

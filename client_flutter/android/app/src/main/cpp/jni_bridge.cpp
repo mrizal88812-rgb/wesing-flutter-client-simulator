@@ -258,3 +258,43 @@ Java_com_okamiaaww_app_KaraokeDspEngine_getExportProgress(JNIEnv *env,
                                                           jobject /* this */) {
   return g_processor ? g_processor->getExportProgress() : 0.0f;
 }
+
+// MULTI-SEGMENT RECORDING SUPPORT
+extern "C" JNIEXPORT void JNICALL
+Java_com_okamiaaww_app_KaraokeDspEngine_finalizeRecordingSegment(JNIEnv *env,
+                                                                 jobject /* this */) {
+  if (g_processor) {
+    g_processor->finalizeRecordingSegment();
+  }
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_okamiaaww_app_KaraokeDspEngine_getVocalSegmentsCount(JNIEnv *env,
+                                                              jobject /* this */) {
+  if (!g_processor) return 0;
+  return static_cast<jint>(g_processor->getVocalSegmentsCount());
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_okamiaaww_app_KaraokeDspEngine_getVocalSegmentData(JNIEnv *env,
+                                                            jobject /* this */,
+                                                            jint index) {
+  if (!g_processor || index < 0) return nullptr;
+  
+  const auto& segments = g_processor->getVocalSegments();
+  if (index >= static_cast<jint>(segments.size())) return nullptr;
+  
+  const auto& seg = segments[index];
+  jfloatArray result = env->NewFloatArray(4);
+  if (result == nullptr) return nullptr;
+  
+  float data[4] = {
+    static_cast<float>(seg.startFrameInBuffer),
+    static_cast<float>(seg.numFrames),
+    static_cast<float>(seg.songStartFrame),
+    static_cast<float>(seg.songEndFrame)
+  };
+  
+  env->SetFloatArrayRegion(result, 0, 4, data);
+  return result;
+}
