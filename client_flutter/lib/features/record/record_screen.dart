@@ -922,11 +922,12 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                   _wasSingingBeforeSeek = false;
                                   _isFinalizingSegment = true;
                                   
-                                  // CRITICAL FIX: Get the ACTUAL timeline position BEFORE seek happened
-                                  // The seek already updated currentTimeNotifier, so we need to calculate
-                                  // the segment end based on when scroll started, not after seek
-                                  // Use the adjusted target time as the segment end point
-                                  final double segmentEndTimeSec = adjustedTargetTimeSec;
+                                  // CRITICAL FIX: Calculate segment end time based on CURRENT playback position BEFORE seek
+                                  // The user was singing until they started scrolling, so use the current time
+                                  // DO NOT use adjustedTargetTimeSec as that's 3 seconds BEFORE the target lyric
+                                  // We need the ACTUAL time when user stopped singing (which is approximately now)
+                                  final double currentTimeSec = _audioEngine.getCurrentPosition().inMilliseconds / 1000.0;
+                                  final double segmentEndTimeSec = currentTimeSec;
                                   
                                   if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
                                     _vocalSegments.add(_VocalSegmentMetadata(
@@ -1027,8 +1028,12 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                     // Same logic as scroll - stop recording to prevent audio loop/duplication
                                     if (isRecordingNotifier.value && _currentSegmentStart != null && !_isFinalizingSegment) {
                                       _isFinalizingSegment = true;
-                                      // Finalize the previous segment using adjusted target time as end point
-                                      final double segmentEndTimeSec = adjustedTargetTimeSec;
+                                      // CRITICAL FIX: Calculate segment end time based on CURRENT playback position BEFORE seek
+                                      // The user was singing until they tapped, so use the current time
+                                      // DO NOT use adjustedTargetTimeSec as that's 3 seconds BEFORE the target lyric
+                                      // We need the ACTUAL time when user stopped singing (which is approximately now)
+                                      final double currentTimeSec = _audioEngine.getCurrentPosition().inMilliseconds / 1000.0;
+                                      final double segmentEndTimeSec = currentTimeSec;
                                       
                                       if (segmentEndTimeSec - _currentSegmentStart! > 0.5) {
                                         _vocalSegments.add(_VocalSegmentMetadata(
