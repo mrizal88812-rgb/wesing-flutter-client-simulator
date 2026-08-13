@@ -1,32 +1,72 @@
 ```
-# Dependencies
+# Flutter/Dart specific
 .dart_tool/
 .build/
+.flutter-plugins
+.flutter-plugin-dependencies
+.packages
+*.g.dart
+*.freezed.dart
+*.config.dart
 
-# Logs and temp files
+# Dependencies
+.pub/
+.venv/
+venv/
+node_modules/
+
+# Compiled/Binary files
+*.so
+*.dylib
+*.dll
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+
+# Build artifacts
+build/
+dist/
+target/
+*.jar
+*.war
+*.class
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+
+# Logs
 *.log
-*.tmp
-*.swp
+*.out
+*.pid
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
-# Editors
-.idea/
+# Editors/IDEs
 .vscode/
-*.iml
-*.ipr
-*.iws
-
-# OS generated files
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
 
-# Coverage reports
+# Testing
+.coverage
+htmlcov/
 coverage/
-*.coverage
+.pytest_cache/
+.mypy_cache/
 
 # Environment variables
 .env
