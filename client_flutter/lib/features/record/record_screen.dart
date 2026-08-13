@@ -1079,23 +1079,23 @@ debugPrint(
                 ),
               ),
               const SizedBox(width: 8),
-              // Live Formula Metrics breakdown (Pitch, Timing, Stability, Complete)
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildMetricChip('Pitch', '${_scoreBreakdown.pitchAccuracy.round()}%', const Color(0xFF00F2FE)),
-                      const SizedBox(width: 5),
-                      _buildMetricChip('Timing', '${_scoreBreakdown.timingAccuracy.round()}%', const Color(0xFF10B981)),
-                      const SizedBox(width: 5),
-                      _buildMetricChip('Stability', '${_scoreBreakdown.stability.round()}%', const Color(0xFFA78BFA)),
-                      const SizedBox(width: 5),
-                      _buildMetricChip('Complete', '${_scoreBreakdown.noteCompletion.round()}%', const Color(0xFFFBBF24)),
-                    ],
-                  ),
-                ),
-              ),
+              // Live Formula Metrics breakdown (Pitch, Timing, Stability, Complete) - HIDDEN
+              // Expanded(
+              //   child: SingleChildScrollView(
+              //     scrollDirection: Axis.horizontal,
+              //     child: Row(
+              //       children: [
+              //         _buildMetricChip('Pitch', '${_scoreBreakdown.pitchAccuracy.round()}%', const Color(0xFF00F2FE)),
+              //         const SizedBox(width: 5),
+              //         _buildMetricChip('Timing', '${_scoreBreakdown.timingAccuracy.round()}%', const Color(0xFF10B981)),
+              //         const SizedBox(width: 5),
+              //         _buildMetricChip('Stability', '${_scoreBreakdown.stability.round()}%', const Color(0xFFA78BFA)),
+              //         const SizedBox(width: 5),
+              //         _buildMetricChip('Complete', '${_scoreBreakdown.noteCompletion.round()}%', const Color(0xFFFBBF24)),
+              //       ],
+              //     ),
+              //   ),
+              // ),
             ],
           ),
 
