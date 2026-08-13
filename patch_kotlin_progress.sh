@@ -1,0 +1,5 @@
+#!/bin/bash
+sed -i '/external fun exportMix/a \    external fun getExportProgress(): Float' client_flutter/android/app/src/main/kotlin/com/okamiaaww/app/KaraokeDspEngine.kt
+
+sed -i '/val success = exportMix(vVol, iVol, outPath)/c \                    var isDone = false\n                    val progressJob = launch {\n                        while (!isDone) {\n                            val p = getExportProgress()\n                            withContext(Dispatchers.Main) {\n                                // Send progress back via event channel if needed, or MethodChannel callback if possible\n                                // For now, the app expects MethodChannel reply at the end, but we can send progress via EventChannel if we want.\n                            }\n                            delay(100)\n                        }\n                    }\n                    val success = exportMix(vVol, iVol, outPath)\n                    isDone = true\n                    progressJob.cancel()' client_flutter/android/app/src/main/kotlin/com/okamiaaww/app/KaraokeDspEngine.kt
+

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "759650191820",
+    "project_id": "gen-lang-client-0647177679",
+    "storage_bucket": "gen-lang-client-0647177679.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:759650191820:android:5eeebc6bf59e4313327569",
+        "android_client_info": {
+          "package_name": "com.okamiaaww.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKxYREAvclliftyqr0e6hxEUA9Nn3897c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

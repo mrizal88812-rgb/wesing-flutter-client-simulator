@@ -1,0 +1,180 @@
+{
+  "presets": [
+    {
+      "id": "studio",
+      "name": "Studio",
+      "icon": "headphones",
+      "description": "Professional studio vocal",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.2,
+        "delay": 0.05,
+        "echo": 0,
+        "vocalGain": 1.15,
+        "compressor": 0.35,
+        "limiter": 0.15,
+        "noiseReduction": 0.1,
+        "eqLow": 0.05,
+        "eqMid": 0.1,
+        "eqHigh": 0.08,
+        "stereoWidth": 0.2,
+        "presence": 0.15,
+        "brightness": 0.1
+      }
+    },
+    {
+      "id": "warm",
+      "name": "Warm",
+      "icon": "warm",
+      "description": "Warm and cozy analog tone",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.15,
+        "delay": 0,
+        "echo": 0,
+        "vocalGain": 1.1,
+        "compressor": 0.3,
+        "limiter": 0.1,
+        "noiseReduction": 0.1,
+        "eqLow": 0.2,
+        "eqMid": 0.1,
+        "eqHigh": -0.05,
+        "stereoWidth": 0.1,
+        "presence": 0.1,
+        "brightness": 0.05
+      }
+    },
+    {
+      "id": "bright",
+      "name": "Bright",
+      "icon": "bright",
+      "description": "Crisp highs and presence",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.18,
+        "delay": 0.02,
+        "echo": 0,
+        "vocalGain": 1.12,
+        "compressor": 0.28,
+        "limiter": 0.12,
+        "noiseReduction": 0.08,
+        "eqLow": -0.05,
+        "eqMid": 0.08,
+        "eqHigh": 0.22,
+        "stereoWidth": 0.15,
+        "presence": 0.25,
+        "brightness": 0.2
+      }
+    },
+    {
+      "id": "pop",
+      "name": "Pop",
+      "icon": "pop",
+      "description": "Modern commercial radio ready",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.3,
+        "delay": 0.1,
+        "echo": 0,
+        "vocalGain": 1.2,
+        "compressor": 0.45,
+        "limiter": 0.2,
+        "noiseReduction": 0.15,
+        "eqLow": 0,
+        "eqMid": 0.15,
+        "eqHigh": 0.15,
+        "stereoWidth": 0.25,
+        "presence": 0.2,
+        "brightness": 0.15
+      }
+    },
+    {
+      "id": "acoustic",
+      "name": "Acoustic",
+      "icon": "acoustic",
+      "description": "Intimate organic acoustic response",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.1,
+        "delay": 0,
+        "echo": 0,
+        "vocalGain": 1,
+        "compressor": 0.2,
+        "limiter": 0.08,
+        "noiseReduction": 0.05,
+        "eqLow": 0.05,
+        "eqMid": 0.1,
+        "eqHigh": 0.05,
+        "stereoWidth": 0.08,
+        "presence": 0.12,
+        "brightness": 0.08
+      }
+    },
+    {
+      "id": "rock",
+      "name": "Rock",
+      "icon": "rock",
+      "description": "Aggressive, high intensity",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.25,
+        "delay": 0.12,
+        "echo": 0,
+        "vocalGain": 1.25,
+        "compressor": 0.5,
+        "limiter": 0.25,
+        "noiseReduction": 0.15,
+        "eqLow": 0.1,
+        "eqMid": 0.2,
+        "eqHigh": 0.12,
+        "stereoWidth": 0.3,
+        "presence": 0.22,
+        "brightness": 0.1
+      }
+    },
+    {
+      "id": "live_concert",
+      "name": "Live Concert",
+      "icon": "live",
+      "description": "Immersive stadium spatial delay",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.55,
+        "delay": 0.22,
+        "echo": 0.15,
+        "vocalGain": 1.1,
+        "compressor": 0.35,
+        "limiter": 0.18,
+        "noiseReduction": 0.12,
+        "eqLow": 0.08,
+        "eqMid": 0.05,
+        "eqHigh": 0.15,
+        "stereoWidth": 0.45,
+        "presence": 0.18,
+        "brightness": 0.15
+      }
+    },
+    {
+      "id": "ktv",
+      "name": "KTV",
+      "icon": "ktv",
+      "description": "Classic karaoke room echo",
+      "enabled": true,
+      "dsp": {
+        "reverb": 0.45,
+        "delay": 0.18,
+        "echo": 0.25,
+        "vocalGain": 1.22,
+        "compressor": 0.4,
+        "limiter": 0.22,
+        "noiseReduction": 0.15,
+        "eqLow": 0.05,
+        "eqMid": 0.12,
+        "eqHigh": 0.1,
+        "stereoWidth": 0.35,
+        "presence": 0.15,
+        "brightness": 0.12
+      }
+    }
+  ]
+}
