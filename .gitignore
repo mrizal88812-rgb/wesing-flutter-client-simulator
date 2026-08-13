@@ -68,7 +68,14 @@ coverage/
 .pytest_cache/
 .mypy_cache/
 
-# Compression
+# Environment variables
+.env
+.env.local
+*.env
+.env.*
+```
+```
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -92,3 +99,14 @@ coverage/
 *.tar.xz
 *.tar.zst
 ```
+# OS generated files
+.DS_Store
+Thumbs.db
+```
+/client_flutter/build
+/node_modules
+/client_flutter/android/.gradle
+/client_flutter/android/.gradle
+/client_flutter/.dart_tool
+/client_flutter/.dart_tool
+/client_flutter/android/.gradle
